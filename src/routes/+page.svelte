@@ -93,6 +93,7 @@
     model: "",
     apiKey: "",
     timeoutMs: 12000,
+    customInstruction: "",
   };
   const textPreviews: Record<string, string> = {};
 
@@ -950,7 +951,7 @@
           uploadInputEl?.click();
         }}
       >
-        Add Files
+        Import Files
       </Button>
 
       <UploadProgressPopup
@@ -1329,6 +1330,17 @@
           step="500"
           bind:value={aiConfig.timeoutMs}
         />
+      </label>
+
+      <label class="assetlib-modal-label">
+        <span>Custom Instruction (optional)</span>
+        <textarea
+          bind:value={aiConfig.customInstruction}
+          class="assetlib-description-input"
+          placeholder="Example: prioritize game-ready surface keywords and avoid brand names"
+          rows="3"
+          maxlength="1000"
+        ></textarea>
       </label>
 
       <div class="assetlib-modal-actions">

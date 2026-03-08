@@ -96,6 +96,7 @@ Supported variables:
 - `AI_MODEL` (loaded model name)
 - `AI_API_KEY` (optional)
 - `AI_TIMEOUT_MS` (e.g. `12000`)
+- `AI_CUSTOM_INSTRUCTION` (optional prompt addition)
 
 Notes:
 

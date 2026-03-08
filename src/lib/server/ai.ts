@@ -8,6 +8,7 @@ export interface AiConfig {
   model: string;
   apiKey: string;
   timeoutMs: number;
+  customInstruction: string;
 }
 
 const dataRoot = path.join(process.cwd(), "data");
@@ -19,7 +20,12 @@ const defaultConfig: AiConfig = {
   model: "",
   apiKey: "",
   timeoutMs: 12_000,
+  customInstruction: "",
 };
+
+function sanitizeInstruction(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 1_000);
+}
 
 function parseEnvBoolean(value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
@@ -43,6 +49,9 @@ function applyEnvOverrides(config: AiConfig): AiConfig {
     model: env.AI_MODEL?.trim() || config.model,
     apiKey: env.AI_API_KEY ?? config.apiKey,
     timeoutMs: parseEnvNumber(env.AI_TIMEOUT_MS) ?? config.timeoutMs,
+    customInstruction:
+      sanitizeInstruction(env.AI_CUSTOM_INSTRUCTION ?? "") ||
+      config.customInstruction,
   };
 }
 
@@ -66,6 +75,9 @@ export async function getAiConfig(): Promise<AiConfig> {
     model: (parsed.model ?? defaultConfig.model).trim(),
     apiKey: parsed.apiKey ?? defaultConfig.apiKey,
     timeoutMs: parsed.timeoutMs ?? defaultConfig.timeoutMs,
+    customInstruction: sanitizeInstruction(
+      parsed.customInstruction ?? defaultConfig.customInstruction,
+    ),
   };
 
   return applyEnvOverrides(fileConfig);
@@ -81,6 +93,9 @@ export async function updateAiConfig(
     baseUrl: (updates.baseUrl ?? current.baseUrl).trim(),
     model: (updates.model ?? current.model).trim(),
     timeoutMs: Math.max(1_000, updates.timeoutMs ?? current.timeoutMs),
+    customInstruction: sanitizeInstruction(
+      updates.customInstruction ?? current.customInstruction,
+    ),
   };
 
   await writeFile(configPath, JSON.stringify(merged, null, 2), "utf8");
@@ -175,6 +190,9 @@ export async function generateAutoMetadata(params: {
     `mime_type: ${params.mimeType}`,
     `existing_tags: ${params.existingTags.join(", ") || "(none)"}`,
     `existing_description: ${params.existingDescription || "(none)"}`,
+    config.customInstruction
+      ? `custom_instruction: ${config.customInstruction}`
+      : "",
     params.textSnippet
       ? `text_sample: ${params.textSnippet.slice(0, 500)}`
       : "",
