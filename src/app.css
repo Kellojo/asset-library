@@ -167,37 +167,6 @@ body {
   color: var(--app-text);
 }
 
-/* Sonner toast theme tokens aligned with app design variables. */
-[data-sonner-toaster][data-sonner-theme="light"],
-[data-sonner-toaster][data-sonner-theme="dark"] {
-  z-index: var(--z-toast) !important;
-  --normal-bg: var(--backgroundLight);
-  --normal-bg-hover: color-mix(
-    in hsl,
-    var(--backgroundLight) 80%,
-    var(--accent) 20%
-  );
-  --normal-border: var(--borderColor);
-  --normal-border-hover: var(--borderHoverColor);
-  --normal-text: var(--app-text);
-
-  --success-bg: var(--successSecondary);
-  --success-border: var(--success);
-  --success-text: var(--success);
-
-  --info-bg: var(--infoSecondary);
-  --info-border: var(--info);
-  --info-text: var(--info);
-
-  --warning-bg: var(--warningSecondary);
-  --warning-border: var(--warning);
-  --warning-text: var(--warning);
-
-  --error-bg: var(--errorSecondary);
-  --error-border: var(--error);
-  --error-text: var(--error);
-}
-
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
