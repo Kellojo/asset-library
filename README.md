@@ -24,7 +24,7 @@ A simple **self-hosted asset library** for your 🎮 game development needs, ava
   - 🧠 Fuzzy search using Fuse.js
 
 - 🧬 File deduplication using hashes
-- 📁 File-based storage (no external database needed)
+- 📁 Built-in SQLite metadata storage (no external database needed)
 
 🚧 Currently not available
 
@@ -68,10 +68,12 @@ In case you obsere failing requests when uploading large files, make sure that y
 
 At runtime the app creates a `data/` directory in the project root:
 
-- 📄 `data/assets.json`: metadata database
+- 📄 `data/assets.db`: SQLite metadata database
 - 📂 `data/uploads/`: uploaded files
 
 This keeps setup **very small and easy to back up**.
+
+If a legacy `data/assets.json` exists, it is automatically migrated into SQLite on first startup.
 
 # ✨ AI Auto Metadata
 

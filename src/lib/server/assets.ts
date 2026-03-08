@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import { TextDecoder } from "node:util";
 import type {
   AssetCategory,
@@ -12,6 +13,7 @@ import { generateAutoMetadata } from "$lib/server/ai";
 
 const dataRoot = path.join(process.cwd(), "data");
 const uploadsDir = path.join(dataRoot, "uploads");
+const dbPath = path.join(dataRoot, "assets.db");
 const metadataPath = path.join(dataRoot, "assets.json");
 
 const modelExtensions = new Set([
@@ -62,6 +64,30 @@ const textDecoder = new TextDecoder();
 
 const DEFAULT_LICENSE = "Unknown";
 
+type AssetRow = {
+  id: string;
+  title: string;
+  description: string;
+  tags_json: string;
+  licenses_json: string;
+  source_url: string;
+  metadata_edited: number;
+  upload_date: string;
+  original_name: string;
+  stored_name: string;
+  file_type: string;
+  hash: string | null;
+  mime_type: string;
+  size: number;
+  category: string;
+  preview_kind: string;
+  width: number | null;
+  height: number | null;
+};
+
+let db: DatabaseSync | undefined;
+let storageReady: Promise<void> | undefined;
+
 export class DuplicateAssetError extends Error {
   existingAsset: AssetRecord;
 
@@ -77,40 +103,292 @@ function computeAssetHash(bytes: Uint8Array | Buffer): string {
 }
 
 async function ensureAssetHashes(
-  records: AssetRecord[],
-): Promise<{ records: AssetRecord[]; updated: boolean }> {
-  let updated = false;
+): Promise<void> {
+  const database = getDb();
+  const rows = database
+    .prepare(
+      "SELECT id, stored_name FROM assets WHERE hash IS NULL OR TRIM(hash) = ''",
+    )
+    .all() as Array<{ id: string; stored_name: string }>;
 
-  const withHashes = await Promise.all(
-    records.map(async (record) => {
-      if (typeof record.hash === "string" && record.hash.trim()) {
-        return { ...record, hash: record.hash.trim() };
-      }
+  if (rows.length === 0) {
+    return;
+  }
 
-      try {
-        const fileBytes = await readFile(
-          path.join(uploadsDir, record.storedName),
-        );
-        updated = true;
-        return {
-          ...record,
-          hash: computeAssetHash(fileBytes),
-        };
-      } catch {
-        return record;
-      }
-    }),
+  const updateHash = database.prepare("UPDATE assets SET hash = ? WHERE id = ?");
+  for (const row of rows) {
+    try {
+      const fileBytes = await readFile(path.join(uploadsDir, row.stored_name));
+      updateHash.run(computeAssetHash(fileBytes), row.id);
+    } catch {
+      // Ignore missing files and keep legacy records untouched.
+    }
+  }
+}
+
+function getDb(): DatabaseSync {
+  if (db) {
+    return db;
+  }
+
+  db = new DatabaseSync(dbPath);
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
+  db.exec("PRAGMA busy_timeout = 5000");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS assets (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      tags_json TEXT NOT NULL,
+      licenses_json TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      metadata_edited INTEGER NOT NULL,
+      upload_date TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      file_type TEXT NOT NULL,
+      hash TEXT,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      preview_kind TEXT NOT NULL,
+      width INTEGER,
+      height INTEGER
+    );
+  `);
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_assets_upload_date ON assets(upload_date DESC)",
+  );
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_hash ON assets(hash)");
+
+  return db;
+}
+
+function parseStringArray(value: string, fallback: string[] = []): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return fallback;
+    }
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeImportedRecord(record: AssetRecord): AssetRecord {
+  const normalizedLicenses = Array.isArray(record.licenses)
+    ? record.licenses.map((license) => license.trim()).filter(Boolean)
+    : [];
+
+  return {
+    ...record,
+    fileType:
+      typeof record.fileType === "string" && record.fileType.trim()
+        ? record.fileType.trim().toLowerCase()
+        : getFileType(record.originalName, record.mimeType),
+    hash:
+      typeof record.hash === "string" && record.hash.trim()
+        ? record.hash.trim()
+        : undefined,
+    description:
+      typeof record.description === "string" ? record.description.trim() : "",
+    sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
+    licenses:
+      normalizedLicenses.length > 0
+        ? normalizedLicenses
+        : [DEFAULT_LICENSE],
+    metadataEdited: record.metadataEdited ?? true,
+    previewKind: getPreviewKind(
+      record.category,
+      record.originalName,
+      record.mimeType,
+    ),
+  };
+}
+
+function rowToAssetRecord(row: AssetRow): AssetRecord {
+  const category = (row.category || "other") as AssetCategory;
+  const fallbackPreviewKind = getPreviewKind(
+    category,
+    row.original_name,
+    row.mime_type,
   );
 
-  return { records: withHashes, updated };
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    tags: parseStringArray(row.tags_json),
+    licenses: (() => {
+      const parsed = parseStringArray(row.licenses_json);
+      return parsed.length > 0 ? parsed : [DEFAULT_LICENSE];
+    })(),
+    sourceUrl: row.source_url,
+    metadataEdited: Boolean(row.metadata_edited),
+    uploadDate: row.upload_date,
+    originalName: row.original_name,
+    storedName: row.stored_name,
+    fileType:
+      typeof row.file_type === "string" && row.file_type.trim()
+        ? row.file_type.trim().toLowerCase()
+        : getFileType(row.original_name, row.mime_type),
+    hash: row.hash?.trim() || undefined,
+    mimeType: row.mime_type,
+    size: Number(row.size),
+    category,
+    previewKind:
+      row.preview_kind === "audio" ||
+      row.preview_kind === "image" ||
+      row.preview_kind === "model" ||
+      row.preview_kind === "text" ||
+      row.preview_kind === "none"
+        ? row.preview_kind
+        : fallbackPreviewKind,
+    width: typeof row.width === "number" ? row.width : undefined,
+    height: typeof row.height === "number" ? row.height : undefined,
+  };
+}
+
+function insertRecord(database: DatabaseSync, record: AssetRecord): void {
+  database
+    .prepare(
+      `
+        INSERT INTO assets (
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        ) VALUES (
+          @id,
+          @title,
+          @description,
+          @tags_json,
+          @licenses_json,
+          @source_url,
+          @metadata_edited,
+          @upload_date,
+          @original_name,
+          @stored_name,
+          @file_type,
+          @hash,
+          @mime_type,
+          @size,
+          @category,
+          @preview_kind,
+          @width,
+          @height
+        )
+      `,
+    )
+    .run({
+      id: record.id,
+      title: record.title,
+      description: record.description,
+      tags_json: JSON.stringify(record.tags),
+      licenses_json: JSON.stringify(record.licenses),
+      source_url: record.sourceUrl,
+      metadata_edited: record.metadataEdited ? 1 : 0,
+      upload_date: record.uploadDate,
+      original_name: record.originalName,
+      stored_name: record.storedName,
+      file_type: record.fileType,
+      hash: record.hash ?? null,
+      mime_type: record.mimeType,
+      size: record.size,
+      category: record.category,
+      preview_kind: record.previewKind,
+      width: record.width ?? null,
+      height: record.height ?? null,
+    });
+}
+
+async function migrateLegacyJsonIfNeeded(database: DatabaseSync): Promise<void> {
+  const countResult = database
+    .prepare("SELECT COUNT(*) AS count FROM assets")
+    .get() as { count: number };
+  if (Number(countResult.count) > 0) {
+    return;
+  }
+
+  let raw: string;
+  try {
+    raw = await readFile(metadataPath, "utf8");
+  } catch {
+    return;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    return;
+  }
+
+  const records = parsed
+    .filter((entry): entry is AssetRecord => {
+      return (
+        typeof entry === "object" &&
+        entry !== null &&
+        typeof (entry as AssetRecord).id === "string" &&
+        typeof (entry as AssetRecord).storedName === "string"
+      );
+    })
+    .map((entry) => normalizeImportedRecord(entry));
+
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    for (const record of records) {
+      try {
+        insertRecord(database, record);
+      } catch {
+        // Skip malformed or duplicate legacy entries during migration.
+      }
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 async function ensureStorage(): Promise<void> {
-  await mkdir(uploadsDir, { recursive: true });
+  if (!storageReady) {
+    storageReady = (async () => {
+      await mkdir(dataRoot, { recursive: true });
+      await mkdir(uploadsDir, { recursive: true });
+      const database = getDb();
+      await migrateLegacyJsonIfNeeded(database);
+    })();
+  }
+
   try {
-    await readFile(metadataPath, "utf8");
-  } catch {
-    await writeFile(metadataPath, "[]", "utf8");
+    await storageReady;
+  } catch (error) {
+    storageReady = undefined;
+    throw error;
   }
 }
 
@@ -185,46 +463,36 @@ function getFileType(fileName: string, mimeType: string): string {
 
 export async function readAssets(): Promise<AssetRecord[]> {
   await ensureStorage();
-  const raw = await readFile(metadataPath, "utf8");
-  const parsed = JSON.parse(raw) as AssetRecord[];
-  const normalized = parsed.map((record) => ({
-    ...record,
-    fileType:
-      typeof record.fileType === "string" && record.fileType.trim()
-        ? record.fileType.trim().toLowerCase()
-        : getFileType(record.originalName, record.mimeType),
-    hash:
-      typeof record.hash === "string" && record.hash.trim()
-        ? record.hash.trim()
-        : undefined,
-    description:
-      typeof record.description === "string" ? record.description.trim() : "",
-    sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
-    licenses: (() => {
-      const normalizedLicenses = Array.isArray(record.licenses)
-        ? record.licenses
-            .filter((value): value is string => typeof value === "string")
-            .map((license) => license.trim())
-            .filter(Boolean)
-        : [];
+  const database = getDb();
+  const rows = database
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        FROM assets
+        ORDER BY upload_date DESC
+      `,
+    )
+    .all() as AssetRow[];
 
-      return normalizedLicenses.length > 0
-        ? normalizedLicenses
-        : [DEFAULT_LICENSE];
-    })(),
-    // Legacy records created before this field existed are treated as already edited.
-    metadataEdited: record.metadataEdited ?? true,
-    previewKind: getPreviewKind(
-      record.category,
-      record.originalName,
-      record.mimeType,
-    ),
-  }));
-  return normalized.sort((a, b) => b.uploadDate.localeCompare(a.uploadDate));
-}
-
-async function writeAssets(records: AssetRecord[]): Promise<void> {
-  await writeFile(metadataPath, JSON.stringify(records, null, 2), "utf8");
+  return rows.map(rowToAssetRecord);
 }
 
 export function toAssetView(record: AssetRecord): AssetView {
@@ -248,17 +516,38 @@ export async function saveAsset(params: {
   bytes: Uint8Array;
 }): Promise<AssetRecord> {
   await ensureStorage();
-  const records = await readAssets();
+  const database = getDb();
   const incomingHash = computeAssetHash(params.bytes);
-  const { records: recordsWithHashes, updated } =
-    await ensureAssetHashes(records);
-  if (updated) {
-    await writeAssets(recordsWithHashes);
-  }
-
-  const duplicate = recordsWithHashes.find(
-    (record) => record.hash === incomingHash,
-  );
+  await ensureAssetHashes();
+  const duplicateRow = database
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        FROM assets
+        WHERE hash = ?
+        LIMIT 1
+      `,
+    )
+    .get(incomingHash) as AssetRow | undefined;
+  const duplicate = duplicateRow ? rowToAssetRecord(duplicateRow) : undefined;
   if (duplicate) {
     throw new DuplicateAssetError(duplicate);
   }
@@ -331,8 +620,6 @@ export async function saveAsset(params: {
         : undefined,
   });
 
-  await writeFile(path.join(uploadsDir, storedName), params.bytes);
-
   const normalizedLicenses = (params.licenses ?? [])
     .map((license) => license.trim())
     .filter(Boolean);
@@ -365,16 +652,89 @@ export async function saveAsset(params: {
     height,
   };
 
-  recordsWithHashes.unshift(record);
-  await writeAssets(recordsWithHashes);
+  await writeFile(path.join(uploadsDir, storedName), params.bytes);
+
+  try {
+    insertRecord(database, record);
+  } catch (errorValue) {
+    await rm(path.join(uploadsDir, storedName), { force: true });
+
+    const message =
+      errorValue instanceof Error ? errorValue.message : String(errorValue);
+    if (message.includes("UNIQUE constraint failed: assets.hash")) {
+      const existing = database
+        .prepare(
+          `
+            SELECT
+              id,
+              title,
+              description,
+              tags_json,
+              licenses_json,
+              source_url,
+              metadata_edited,
+              upload_date,
+              original_name,
+              stored_name,
+              file_type,
+              hash,
+              mime_type,
+              size,
+              category,
+              preview_kind,
+              width,
+              height
+            FROM assets
+            WHERE hash = ?
+            LIMIT 1
+          `,
+        )
+        .get(incomingHash) as AssetRow | undefined;
+      if (existing) {
+        throw new DuplicateAssetError(rowToAssetRecord(existing));
+      }
+    }
+    throw errorValue;
+  }
+
   return record;
 }
 
 export async function getAssetById(
   id: string,
 ): Promise<AssetRecord | undefined> {
-  const records = await readAssets();
-  return records.find((record) => record.id === id);
+  await ensureStorage();
+  const database = getDb();
+  const row = database
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        FROM assets
+        WHERE id = ?
+        LIMIT 1
+      `,
+    )
+    .get(id) as AssetRow | undefined;
+
+  return row ? rowToAssetRecord(row) : undefined;
 }
 
 export async function updateAssetMetadata(
@@ -387,23 +747,36 @@ export async function updateAssetMetadata(
     sourceUrl: string;
   },
 ): Promise<AssetRecord | undefined> {
-  const records = await readAssets();
-  const index = records.findIndex((record) => record.id === id);
-  if (index === -1) return undefined;
+  await ensureStorage();
+  const database = getDb();
+  const result = database
+    .prepare(
+      `
+        UPDATE assets
+        SET
+          title = @title,
+          description = @description,
+          tags_json = @tags_json,
+          licenses_json = @licenses_json,
+          source_url = @source_url,
+          metadata_edited = 1
+        WHERE id = @id
+      `,
+    )
+    .run({
+      id,
+      title: updates.title,
+      description: updates.description,
+      tags_json: JSON.stringify(updates.tags),
+      licenses_json: JSON.stringify(updates.licenses),
+      source_url: updates.sourceUrl,
+    });
 
-  const current = records[index];
-  records[index] = {
-    ...current,
-    title: updates.title,
-    description: updates.description,
-    tags: updates.tags,
-    licenses: updates.licenses,
-    sourceUrl: updates.sourceUrl,
-    metadataEdited: true,
-  };
+  if (result.changes === 0) {
+    return undefined;
+  }
 
-  await writeAssets(records);
-  return records[index];
+  return getAssetById(id);
 }
 
 export async function replaceAssetFile(
@@ -416,26 +789,76 @@ export async function replaceAssetFile(
   },
 ): Promise<AssetRecord | undefined> {
   await ensureStorage();
-  const records = await readAssets();
-  const { records: recordsWithHashes, updated } =
-    await ensureAssetHashes(records);
-  const index = recordsWithHashes.findIndex((record) => record.id === id);
-  if (index === -1) {
-    if (updated) {
-      await writeAssets(recordsWithHashes);
-    }
+  const database = getDb();
+  await ensureAssetHashes();
+
+  const currentRow = database
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        FROM assets
+        WHERE id = ?
+        LIMIT 1
+      `,
+    )
+    .get(id) as AssetRow | undefined;
+  if (!currentRow) {
     return undefined;
   }
 
   const incomingHash = computeAssetHash(replacement.bytes);
-  const duplicate = recordsWithHashes.find(
-    (record) => record.id !== id && record.hash === incomingHash,
-  );
+  const duplicateRow = database
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          description,
+          tags_json,
+          licenses_json,
+          source_url,
+          metadata_edited,
+          upload_date,
+          original_name,
+          stored_name,
+          file_type,
+          hash,
+          mime_type,
+          size,
+          category,
+          preview_kind,
+          width,
+          height
+        FROM assets
+        WHERE hash = ? AND id != ?
+        LIMIT 1
+      `,
+    )
+    .get(incomingHash, id) as AssetRow | undefined;
+  const duplicate = duplicateRow ? rowToAssetRecord(duplicateRow) : undefined;
   if (duplicate) {
     throw new DuplicateAssetError(duplicate);
   }
 
-  const current = recordsWithHashes[index];
+  const current = rowToAssetRecord(currentRow);
   const ext = path.extname(replacement.fileName);
   const storedName = `${id}${ext}`;
   const category = getCategory(replacement.fileName, replacement.mimeType);
@@ -469,38 +892,100 @@ export async function replaceAssetFile(
     await rm(path.join(uploadsDir, current.storedName), { force: true });
   }
 
-  recordsWithHashes[index] = {
-    ...current,
-    originalName: replacement.fileName,
-    storedName,
-    fileType: getFileType(
-      replacement.fileName,
-      replacement.mimeType || "application/octet-stream",
-    ),
-    hash: incomingHash,
-    mimeType: replacement.mimeType || "application/octet-stream",
-    size: replacement.size,
-    category,
-    previewKind,
-    width,
-    height,
-    uploadDate: new Date().toISOString(),
-    // Replacement can invalidate descriptive metadata; flag for review.
-    metadataEdited: false,
-  };
+  const uploadDate = new Date().toISOString();
+  try {
+    database
+      .prepare(
+        `
+          UPDATE assets
+          SET
+            original_name = @original_name,
+            stored_name = @stored_name,
+            file_type = @file_type,
+            hash = @hash,
+            mime_type = @mime_type,
+            size = @size,
+            category = @category,
+            preview_kind = @preview_kind,
+            width = @width,
+            height = @height,
+            upload_date = @upload_date,
+            metadata_edited = 0
+          WHERE id = @id
+        `,
+      )
+      .run({
+        id,
+        original_name: replacement.fileName,
+        stored_name: storedName,
+        file_type: getFileType(
+          replacement.fileName,
+          replacement.mimeType || "application/octet-stream",
+        ),
+        hash: incomingHash,
+        mime_type: replacement.mimeType || "application/octet-stream",
+        size: replacement.size,
+        category,
+        preview_kind: previewKind,
+        width: width ?? null,
+        height: height ?? null,
+        upload_date: uploadDate,
+      });
+  } catch (errorValue) {
+    const message =
+      errorValue instanceof Error ? errorValue.message : String(errorValue);
+    if (message.includes("UNIQUE constraint failed: assets.hash")) {
+      const existing = database
+        .prepare(
+          `
+            SELECT
+              id,
+              title,
+              description,
+              tags_json,
+              licenses_json,
+              source_url,
+              metadata_edited,
+              upload_date,
+              original_name,
+              stored_name,
+              file_type,
+              hash,
+              mime_type,
+              size,
+              category,
+              preview_kind,
+              width,
+              height
+            FROM assets
+            WHERE hash = ? AND id != ?
+            LIMIT 1
+          `,
+        )
+        .get(incomingHash, id) as AssetRow | undefined;
+      if (existing) {
+        throw new DuplicateAssetError(rowToAssetRecord(existing));
+      }
+    }
+    throw errorValue;
+  }
 
-  await writeAssets(recordsWithHashes);
-  return recordsWithHashes[index];
+  return getAssetById(id);
 }
 
 export async function deleteAsset(id: string): Promise<boolean> {
-  const records = await readAssets();
-  const index = records.findIndex((record) => record.id === id);
-  if (index === -1) return false;
+  await ensureStorage();
+  const database = getDb();
+  const row = database
+    .prepare("SELECT stored_name FROM assets WHERE id = ? LIMIT 1")
+    .get(id) as { stored_name: string } | undefined;
 
-  const [removed] = records.splice(index, 1);
-  await writeAssets(records);
-  await rm(path.join(uploadsDir, removed.storedName), { force: true });
+  if (!row) {
+    return false;
+  }
+
+  database.prepare("DELETE FROM assets WHERE id = ?").run(id);
+  await rm(path.join(uploadsDir, row.stored_name), { force: true });
   return true;
 }
 
