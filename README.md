@@ -15,13 +15,34 @@ A simple **self-hosted asset library** for your 🎮 game development needs, ava
 - 🧬 File deduplication using hashes
 - 📁 File-based storage (no external database needed)
 
----
+🚧 Currently not available
 
-## 🚧 Currently not available
+- 🔐 User accounts / permissions
 
-- 👤 User accounts / 🔐 permissions
+# 🚀 Quick Start
 
----
+The recommended way to run the app is using **Docker Compose**. Just copy the following into a `docker-compose.yml` file in your project root:
+
+```yaml
+services:
+  asset-library:
+    image: ghcr.io/kellojo/asset-library:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker-compose up -d
+```
+
+The app will be available on port 3000, ready to accept your uploads!
+
+Please run this behind a reverse proxy and do not expose this directly on the internet without proper authentication!
 
 # 🗄️ Storage Layout
 
@@ -31,8 +52,6 @@ At runtime the app creates a `data/` directory in the project root:
 - 📂 `data/uploads/`: uploaded files
 
 ✨ This keeps setup **very small and easy to back up**.
-
----
 
 # 🤖 AI Auto Metadata
 
@@ -53,8 +72,6 @@ The app sends upload metadata to your AI endpoint using the **OpenAI-compatible 
 - 🏷️ Auto-generated tags are **merged with existing tags**
 - ⚠️ If the AI endpoint is unavailable or times out, upload **still succeeds** with existing tags
 
----
-
 # ⚙️ Configure via `.env`
 
 You can configure **AI metadata** via `.env` instead of the UI.
@@ -73,8 +90,6 @@ You can configure **AI metadata** via `.env` instead of the UI.
 - 📋 Copy `.env.example` to `.env` and fill values
 - 🔁 When `AI_*` env vars are present, they **override UI-saved settings** in `data/ai-config.json`
 
----
-
 # 🛠️ Development
 
 ```bash
@@ -85,7 +100,5 @@ npm run dev
 Then open:
 
 🌐 `http://localhost:5173`
-
----
 
 If you want, I can also make a **“GitHub-optimized emoji style”** (used by big repos) which is **cleaner and more consistent** with section icons like 📦 ⚙️ 🧠 🗄️.
