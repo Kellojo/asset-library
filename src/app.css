@@ -434,7 +434,7 @@ body {
 
 .assetlib-library-layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
 }
@@ -448,6 +448,32 @@ body {
   gap: 1.5rem;
   position: sticky;
   top: 0.65rem;
+  max-height: calc(100dvh - 2.65rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.assetlib-filter-sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.assetlib-filter-sidebar:hover,
+.assetlib-filter-sidebar:focus-within {
+  scrollbar-width: thin;
+}
+
+.assetlib-filter-sidebar:hover::-webkit-scrollbar,
+.assetlib-filter-sidebar:focus-within::-webkit-scrollbar {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+.assetlib-filter-sidebar:hover::-webkit-scrollbar-thumb,
+.assetlib-filter-sidebar:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in hsl, var(--app-text-muted) 55%, transparent 45%);
+  border-radius: 999px;
 }
 
 .assetlib-filter-sidebar-head {
@@ -479,9 +505,9 @@ body {
 }
 
 .assetlib-filter-list-scroll {
-  max-height: 260px;
-  overflow: auto;
-  padding-right: 0.15rem;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .assetlib-filter-item {
@@ -798,6 +824,8 @@ body {
 
   .assetlib-filter-sidebar {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .assetlib-tools {
