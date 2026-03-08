@@ -2,10 +2,21 @@
 
 A simple **self-hosted asset library** for your 🎮 game development needs, available as a simple selfhostable docker container:
 
-- ⬆️ Uploading assets: 🔊 audio, 🖼️ textures, ✨ shaders, 📜 scripts, and 🧊 3D models
-- 🗂️ Storing metadata: 🏷️ title, 🔖 tags, 📅 upload date, 📝 description, ⚖️ license, 🔗 source
-- 👀 Asset previews for 🧊 3D models, 🔊 audio and 📄 text/code
-- 🤖 AI integration, which automatically 🏷️ tags/describes imported files (audio, textures, shaders, scripts)
+- ⬆️ Uploading assets:
+  - 🔊 audio
+  - 🖼️ textures
+  - ✨ shaders
+  - 📜 scripts
+  - 🧊 3D models
+- 🗂️ Storing metadata:
+  - 🏷️ title
+  - 🔖 tags
+  - 📅 upload date
+  - 📝 description
+  - ⚖️ license
+  - 🔗 source
+- 👀 Asset previews for 3D models, audio and text/code
+- 🤖 AI integration, which automatically tags/describes imported files (audio, textures, shaders, scripts)
 - ⬇️ Downloading / 🔁 Replacing assets
 - 🔎 Strong filtering and searching functionalities
   - 🏷️ Filtering by tag, type, ...
@@ -49,7 +60,6 @@ The app will be available on port 3000, ready to accept your uploads!
 Please run this behind a reverse proxy and do not expose this directly on the internet without proper authentication!
 
 In case you obsere failing requests when uploading large files, make sure that your reverse proxy allows uploading files of that size.
-
 
 # 🗄️ Storage Layout
 
