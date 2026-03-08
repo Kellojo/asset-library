@@ -11,12 +11,14 @@
   import Input from "$lib/components/Input.svelte";
   import SearchField from "$lib/components/SearchField.svelte";
   import SelectField from "$lib/components/SelectField.svelte";
+  import TagPicker from "$lib/components/TagPicker.svelte";
   import UploadProgressPopup from "$lib/components/UploadProgressPopup.svelte";
 
   const FILTER_QUERY_KEYS = {
     todo: "todo",
     categories: "categories",
     tags: "tags",
+    licenses: "licenses",
     sort: "sort",
   } as const;
   const GITHUB_REPO_URL = "https://github.com/Kellojo/asset-library";
@@ -78,11 +80,7 @@
   let deletingAssetId: string | null = null;
   let editTitle = "";
   let editTags: string[] = [];
-  let tagQuery = "";
-  let tagDropdownOpen = false;
   let editLicenses: string[] = [];
-  let licenseQuery = "";
-  let licenseDropdownOpen = false;
   let editSourceUrl = "";
   let editDescription = "";
   let saveInProgress = false;
@@ -102,8 +100,6 @@
   let importPrefillOpen = false;
   let importPrefillSourceUrl = "";
   let importPrefillLicenses: string[] = [];
-  let importPrefillLicenseQuery = "";
-  let importPrefillLicenseDropdownOpen = false;
   let pendingImportFiles: File[] = [];
   let importPrefillDialogRef: { requestClose: () => void } | null = null;
 
@@ -112,7 +108,9 @@
   let sortMode: SortMode = DEFAULT_SORT_MODE;
   let selectedCategories: AssetCategory[] = [];
   let selectedFilterTags: string[] = [];
+  let selectedFilterLicenses: string[] = [];
   let filterTagQuery = "";
+  let filterLicenseQuery = "";
   let didHydrateFiltersFromUrl = false;
   let aiSettingsOpen = false;
   let aiSaving = false;
@@ -176,7 +174,19 @@
           (assetTag) => assetTag.toLowerCase() === selectedTag.toLowerCase(),
         ),
       );
-      return matchesQuery && matchesTodo && matchesCategory && matchesTags;
+      const matchesLicenses = selectedFilterLicenses.every((selectedLicense) =>
+        (asset.licenses ?? []).some(
+          (assetLicense) =>
+            assetLicense.toLowerCase() === selectedLicense.toLowerCase(),
+        ),
+      );
+      return (
+        matchesQuery &&
+        matchesTodo &&
+        matchesCategory &&
+        matchesTags &&
+        matchesLicenses
+      );
     });
 
     return [...filteredAssets].sort((left, right) => {
@@ -240,23 +250,19 @@
     }
     return counts;
   }, {});
-  $: normalizedTagQuery = tagQuery.trim().toLowerCase();
-  $: normalizedFilterTagQuery = filterTagQuery.trim().toLowerCase();
-  $: matchingTagOptions = allKnownTags.filter(
-    (tag) =>
-      !editTags.some(
-        (selected) => selected.toLowerCase() === tag.toLowerCase(),
-      ) &&
-      (!normalizedTagQuery || tag.toLowerCase().includes(normalizedTagQuery)),
+  $: licenseCountMap = assets.reduce<Record<string, number>>(
+    (counts, asset) => {
+      for (const license of asset.licenses ?? []) {
+        const key = license.trim().toLowerCase();
+        if (!key) continue;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      return counts;
+    },
+    {},
   );
-  $: canCreateTag =
-    tagQuery.trim().length > 0 &&
-    !editTags.some(
-      (tag) => tag.toLowerCase() === tagQuery.trim().toLowerCase(),
-    ) &&
-    !allKnownTags.some(
-      (tag) => tag.toLowerCase() === tagQuery.trim().toLowerCase(),
-    );
+  $: normalizedFilterTagQuery = filterTagQuery.trim().toLowerCase();
+  $: normalizedFilterLicenseQuery = filterLicenseQuery.trim().toLowerCase();
   $: filteredTagRows = allKnownTags
     .filter(
       (tag) =>
@@ -268,6 +274,20 @@
       count: tagCountMap[tag.toLowerCase()] ?? 0,
       selected: selectedFilterTags.some(
         (selected) => selected.toLowerCase() === tag.toLowerCase(),
+      ),
+    }));
+  $: filteredLicenseRows = allKnownLicenses
+    .filter(
+      (license) =>
+        !!licenseCountMap[license.toLowerCase()] &&
+        (!normalizedFilterLicenseQuery ||
+          license.toLowerCase().includes(normalizedFilterLicenseQuery)),
+    )
+    .map((license) => ({
+      license,
+      count: licenseCountMap[license.toLowerCase()] ?? 0,
+      selected: selectedFilterLicenses.some(
+        (selected) => selected.toLowerCase() === license.toLowerCase(),
       ),
     }));
   $: allKnownLicenses = Array.from(
@@ -284,46 +304,6 @@
         .filter(Boolean),
     ),
   ).sort((a, b) => a.localeCompare(b));
-  $: normalizedLicenseQuery = licenseQuery.trim().toLowerCase();
-  $: matchingLicenseOptions = allKnownLicenses.filter(
-    (license) =>
-      !editLicenses.some(
-        (selected) => selected.toLowerCase() === license.toLowerCase(),
-      ) &&
-      (!normalizedLicenseQuery ||
-        license.toLowerCase().includes(normalizedLicenseQuery)),
-  );
-  $: canCreateLicense =
-    licenseQuery.trim().length > 0 &&
-    !editLicenses.some(
-      (license) => license.toLowerCase() === licenseQuery.trim().toLowerCase(),
-    ) &&
-    !allKnownLicenses.some(
-      (license) => license.toLowerCase() === licenseQuery.trim().toLowerCase(),
-    );
-  $: normalizedImportPrefillLicenseQuery = importPrefillLicenseQuery
-    .trim()
-    .toLowerCase();
-  $: matchingImportPrefillLicenseOptions = allKnownLicenses.filter(
-    (license) =>
-      !importPrefillLicenses.some(
-        (selected) => selected.toLowerCase() === license.toLowerCase(),
-      ) &&
-      (!normalizedImportPrefillLicenseQuery ||
-        license.toLowerCase().includes(normalizedImportPrefillLicenseQuery)),
-  );
-  $: canCreateImportPrefillLicense =
-    importPrefillLicenseQuery.trim().length > 0 &&
-    !importPrefillLicenses.some(
-      (license) =>
-        license.toLowerCase() ===
-        importPrefillLicenseQuery.trim().toLowerCase(),
-    ) &&
-    !allKnownLicenses.some(
-      (license) =>
-        license.toLowerCase() ===
-        importPrefillLicenseQuery.trim().toLowerCase(),
-    );
   $: uploadPendingCount = Math.max(0, uploadBatchTotal - uploadProcessedCount);
   $: uploadOverallUnits =
     uploadProcessedCount +
@@ -376,6 +356,10 @@
       url.searchParams,
       FILTER_QUERY_KEYS.tags,
     );
+    const licensesFromUrl = parseListParam(
+      url.searchParams,
+      FILTER_QUERY_KEYS.licenses,
+    );
     const knownCategorySet = new Set(categoryOrder);
 
     selectedCategories = categoriesFromUrl.filter(
@@ -385,6 +369,11 @@
 
     selectedFilterTags = Array.from(
       new Map(tagsFromUrl.map((tag) => [tag.toLowerCase(), tag])).values(),
+    );
+    selectedFilterLicenses = Array.from(
+      new Map(
+        licensesFromUrl.map((license) => [license.toLowerCase(), license]),
+      ).values(),
     );
 
     const todoParam = url.searchParams.get(FILTER_QUERY_KEYS.todo);
@@ -445,6 +434,7 @@
     url.searchParams.delete(FILTER_QUERY_KEYS.todo);
     url.searchParams.delete(FILTER_QUERY_KEYS.categories);
     url.searchParams.delete(FILTER_QUERY_KEYS.tags);
+    url.searchParams.delete(FILTER_QUERY_KEYS.licenses);
     url.searchParams.delete(FILTER_QUERY_KEYS.sort);
 
     if (showTodoOnly) {
@@ -465,6 +455,13 @@
       );
     }
 
+    if (selectedFilterLicenses.length > 0) {
+      url.searchParams.set(
+        FILTER_QUERY_KEYS.licenses,
+        selectedFilterLicenses.join(","),
+      );
+    }
+
     if (sortMode !== DEFAULT_SORT_MODE) {
       url.searchParams.set(FILTER_QUERY_KEYS.sort, sortMode);
     }
@@ -480,8 +477,6 @@
     if (!files.length) return;
     importPrefillSourceUrl = "";
     importPrefillLicenses = [];
-    importPrefillLicenseQuery = "";
-    importPrefillLicenseDropdownOpen = false;
     pendingImportFiles = files;
     importPrefillOpen = true;
   }
@@ -491,8 +486,6 @@
     pendingImportFiles = [];
     importPrefillSourceUrl = "";
     importPrefillLicenses = [];
-    importPrefillLicenseQuery = "";
-    importPrefillLicenseDropdownOpen = false;
   }
 
   function closeImportPrefillDialog(): void {
@@ -733,10 +726,6 @@
         : ["Unknown"];
     editSourceUrl = asset.sourceUrl ?? "";
     editDescription = asset.description ?? "";
-    tagQuery = "";
-    licenseQuery = "";
-    tagDropdownOpen = false;
-    licenseDropdownOpen = false;
     errorMessage = "";
     successMessage = "";
   }
@@ -748,143 +737,6 @@
     editLicenses = [];
     editSourceUrl = "";
     editDescription = "";
-    tagQuery = "";
-    licenseQuery = "";
-    tagDropdownOpen = false;
-    licenseDropdownOpen = false;
-  }
-
-  function addEditTag(rawTag: string): void {
-    const tag = rawTag.trim();
-    if (!tag) return;
-    const exists = editTags.some(
-      (current) => current.toLowerCase() === tag.toLowerCase(),
-    );
-    if (exists) return;
-    editTags = [...editTags, tag];
-    tagQuery = "";
-    tagDropdownOpen = true;
-  }
-
-  function removeEditTag(tagToRemove: string): void {
-    editTags = editTags.filter(
-      (tag) => tag.toLowerCase() !== tagToRemove.toLowerCase(),
-    );
-  }
-
-  function onTagQueryKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      const candidate = tagQuery.trim() || matchingTagOptions[0] || "";
-      if (candidate) addEditTag(candidate);
-      return;
-    }
-
-    if (event.key === "Backspace" && !tagQuery && editTags.length > 0) {
-      event.preventDefault();
-      editTags = editTags.slice(0, -1);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      tagDropdownOpen = false;
-    }
-  }
-
-  function addEditLicense(rawLicense: string): void {
-    const license = rawLicense.trim();
-    if (!license) return;
-
-    const exists = editLicenses.some(
-      (current) => current.toLowerCase() === license.toLowerCase(),
-    );
-    if (exists) return;
-
-    editLicenses = [...editLicenses, license];
-    licenseQuery = "";
-    licenseDropdownOpen = true;
-  }
-
-  function removeEditLicense(licenseToRemove: string): void {
-    editLicenses = editLicenses.filter(
-      (license) => license.toLowerCase() !== licenseToRemove.toLowerCase(),
-    );
-  }
-
-  function onLicenseQueryKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      const candidate = licenseQuery.trim() || matchingLicenseOptions[0] || "";
-      if (candidate) addEditLicense(candidate);
-      return;
-    }
-
-    if (event.key === "Backspace" && !licenseQuery && editLicenses.length > 0) {
-      event.preventDefault();
-      editLicenses = editLicenses.slice(0, -1);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      licenseDropdownOpen = false;
-    }
-  }
-
-  function onWindowMouseDown(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const insideEditTagPicker = !!target.closest(".assetlib-tag-picker");
-    if (!insideEditTagPicker) {
-      tagDropdownOpen = false;
-      licenseDropdownOpen = false;
-      importPrefillLicenseDropdownOpen = false;
-    }
-  }
-
-  function addImportPrefillLicense(rawLicense: string): void {
-    const license = rawLicense.trim();
-    if (!license) return;
-
-    const exists = importPrefillLicenses.some(
-      (current) => current.toLowerCase() === license.toLowerCase(),
-    );
-    if (exists) return;
-
-    importPrefillLicenses = [...importPrefillLicenses, license];
-    importPrefillLicenseQuery = "";
-    importPrefillLicenseDropdownOpen = true;
-  }
-
-  function removeImportPrefillLicense(licenseToRemove: string): void {
-    importPrefillLicenses = importPrefillLicenses.filter(
-      (license) => license.toLowerCase() !== licenseToRemove.toLowerCase(),
-    );
-  }
-
-  function onImportPrefillLicenseQueryKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      const candidate =
-        importPrefillLicenseQuery.trim() ||
-        matchingImportPrefillLicenseOptions[0] ||
-        "";
-      if (candidate) addImportPrefillLicense(candidate);
-      return;
-    }
-
-    if (
-      event.key === "Backspace" &&
-      !importPrefillLicenseQuery &&
-      importPrefillLicenses.length > 0
-    ) {
-      event.preventDefault();
-      importPrefillLicenses = importPrefillLicenses.slice(0, -1);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      importPrefillLicenseDropdownOpen = false;
-    }
   }
 
   function toggleFilterTag(rawTag: string): void {
@@ -902,6 +754,21 @@
     }
   }
 
+  function toggleFilterLicense(rawLicense: string): void {
+    const license = rawLicense.trim();
+    if (!license) return;
+    const isSelected = selectedFilterLicenses.some(
+      (current) => current.toLowerCase() === license.toLowerCase(),
+    );
+    if (isSelected) {
+      selectedFilterLicenses = selectedFilterLicenses.filter(
+        (current) => current.toLowerCase() !== license.toLowerCase(),
+      );
+    } else {
+      selectedFilterLicenses = [...selectedFilterLicenses, license];
+    }
+  }
+
   function toggleCategory(category: AssetCategory): void {
     if (selectedCategories.includes(category)) {
       selectedCategories = selectedCategories.filter(
@@ -915,7 +782,9 @@
   function clearAllFilters(): void {
     selectedCategories = [];
     selectedFilterTags = [];
+    selectedFilterLicenses = [];
     filterTagQuery = "";
+    filterLicenseQuery = "";
     showTodoOnly = false;
   }
 
@@ -939,6 +808,29 @@
 
     if (event.key === "Escape") {
       filterTagQuery = "";
+    }
+  }
+
+  function onFilterLicenseQueryKeyDown(event: KeyboardEvent): void {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const candidate = filteredLicenseRows[0]?.license || "";
+      if (candidate) toggleFilterLicense(candidate);
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !filterLicenseQuery &&
+      selectedFilterLicenses.length > 0
+    ) {
+      event.preventDefault();
+      selectedFilterLicenses = selectedFilterLicenses.slice(0, -1);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      filterLicenseQuery = "";
     }
   }
 
@@ -1144,6 +1036,7 @@
     showTodoOnly;
     selectedCategories;
     selectedFilterTags;
+    selectedFilterLicenses;
     sortMode;
     syncUrlFromFilters();
   }
@@ -1184,7 +1077,6 @@
   on:dragleave={onWindowDragLeave}
   on:drop={onDrop}
   on:keydown={onWindowKeyDown}
-  on:mousedown={onWindowMouseDown}
   on:scroll={onWindowScroll}
 />
 
@@ -1308,6 +1200,7 @@
           <Button
             onclick={clearAllFilters}
             disabled={selectedFilterTags.length === 0 &&
+              selectedFilterLicenses.length === 0 &&
               selectedCategories.length === 0 &&
               !showTodoOnly}>Clear</Button
           >
@@ -1383,6 +1276,28 @@
             {/each}
           </div>
         </div>
+
+        <div class="assetlib-filter-section">
+          <span class="assetlib-filter-title">Licenses</span>
+          <SearchField
+            bind:value={filterLicenseQuery}
+            placeholder="Filter licenses"
+            onkeydown={onFilterLicenseQueryKeyDown}
+          />
+          <div class="assetlib-filter-list assetlib-filter-list-scroll">
+            {#each filteredLicenseRows as row}
+              <button
+                type="button"
+                class="assetlib-filter-item"
+                class:is-selected={row.selected}
+                on:click={() => toggleFilterLicense(row.license)}
+              >
+                <span>{row.license}</span>
+                <span class="assetlib-filter-count">{row.count}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       </aside>
 
       <div class="assetlib-library-main">
@@ -1439,62 +1354,14 @@
 
       <label class="assetlib-modal-label">
         <span>Tags</span>
-        <div class="assetlib-tag-picker">
-          <div class="assetlib-tag-input-wrap">
-            {#each editTags as tag}
-              <span class="assetlib-tag-chip">
-                {tag}
-                <button
-                  type="button"
-                  class="assetlib-tag-chip-remove"
-                  on:click={() => removeEditTag(tag)}
-                  aria-label={`Remove tag ${tag}`}
-                >
-                  ×
-                </button>
-              </span>
-            {/each}
-            <input
-              bind:value={tagQuery}
-              placeholder={editTags.length ? "Add another tag" : "Add tags"}
-              on:focus={() => {
-                tagDropdownOpen = true;
-              }}
-              on:input={() => {
-                tagDropdownOpen = true;
-              }}
-              on:keydown={onTagQueryKeyDown}
-            />
-          </div>
-
-          {#if tagDropdownOpen && (matchingTagOptions.length > 0 || canCreateTag)}
-            <div
-              class="assetlib-tag-dropdown"
-              role="listbox"
-              aria-label="Tag suggestions"
-            >
-              {#if canCreateTag}
-                <button
-                  type="button"
-                  class="assetlib-tag-option assetlib-tag-option-create"
-                  on:click={() => addEditTag(tagQuery)}
-                >
-                  Create "{tagQuery.trim()}"
-                </button>
-              {/if}
-
-              {#each matchingTagOptions as option}
-                <button
-                  type="button"
-                  class="assetlib-tag-option"
-                  on:click={() => addEditTag(option)}
-                >
-                  #{option}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <TagPicker
+          bind:values={editTags}
+          allOptions={allKnownTags}
+          emptyPlaceholder="Add tags"
+          filledPlaceholder="Add another tag"
+          dropdownAriaLabel="Tag suggestions"
+          optionPrefix="#"
+        />
       </label>
 
       <label class="assetlib-modal-label">
@@ -1519,64 +1386,13 @@
 
       <label class="assetlib-modal-label">
         <span>Licenses</span>
-        <div class="assetlib-tag-picker">
-          <div class="assetlib-tag-input-wrap">
-            {#each editLicenses as license}
-              <span class="assetlib-tag-chip">
-                {license}
-                <button
-                  type="button"
-                  class="assetlib-tag-chip-remove"
-                  on:click={() => removeEditLicense(license)}
-                  aria-label={`Remove license ${license}`}
-                >
-                  ×
-                </button>
-              </span>
-            {/each}
-            <input
-              bind:value={licenseQuery}
-              placeholder={editLicenses.length
-                ? "Add another license"
-                : "Add licenses"}
-              on:focus={() => {
-                licenseDropdownOpen = true;
-              }}
-              on:input={() => {
-                licenseDropdownOpen = true;
-              }}
-              on:keydown={onLicenseQueryKeyDown}
-            />
-          </div>
-
-          {#if licenseDropdownOpen && (matchingLicenseOptions.length > 0 || canCreateLicense)}
-            <div
-              class="assetlib-tag-dropdown"
-              role="listbox"
-              aria-label="License suggestions"
-            >
-              {#if canCreateLicense}
-                <button
-                  type="button"
-                  class="assetlib-tag-option assetlib-tag-option-create"
-                  on:click={() => addEditLicense(licenseQuery)}
-                >
-                  Create "{licenseQuery.trim()}"
-                </button>
-              {/if}
-
-              {#each matchingLicenseOptions as option}
-                <button
-                  type="button"
-                  class="assetlib-tag-option"
-                  on:click={() => addEditLicense(option)}
-                >
-                  {option}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <TagPicker
+          bind:values={editLicenses}
+          allOptions={allKnownLicenses}
+          emptyPlaceholder="Add licenses"
+          filledPlaceholder="Add another license"
+          dropdownAriaLabel="License suggestions"
+        />
       </label>
 
       {#snippet actions()}
@@ -1710,65 +1526,13 @@
 
       <label class="assetlib-modal-label">
         <span>Licenses (optional)</span>
-        <div class="assetlib-tag-picker">
-          <div class="assetlib-tag-input-wrap">
-            {#each importPrefillLicenses as license}
-              <span class="assetlib-tag-chip">
-                {license}
-                <button
-                  type="button"
-                  class="assetlib-tag-chip-remove"
-                  on:click={() => removeImportPrefillLicense(license)}
-                  aria-label={`Remove license ${license}`}
-                >
-                  ×
-                </button>
-              </span>
-            {/each}
-            <input
-              bind:value={importPrefillLicenseQuery}
-              placeholder={importPrefillLicenses.length
-                ? "Add another license"
-                : "Add licenses"}
-              on:focus={() => {
-                importPrefillLicenseDropdownOpen = true;
-              }}
-              on:input={() => {
-                importPrefillLicenseDropdownOpen = true;
-              }}
-              on:keydown={onImportPrefillLicenseQueryKeyDown}
-            />
-          </div>
-
-          {#if importPrefillLicenseDropdownOpen && (matchingImportPrefillLicenseOptions.length > 0 || canCreateImportPrefillLicense)}
-            <div
-              class="assetlib-tag-dropdown"
-              role="listbox"
-              aria-label="License suggestions"
-            >
-              {#if canCreateImportPrefillLicense}
-                <button
-                  type="button"
-                  class="assetlib-tag-option assetlib-tag-option-create"
-                  on:click={() =>
-                    addImportPrefillLicense(importPrefillLicenseQuery)}
-                >
-                  Create "{importPrefillLicenseQuery.trim()}"
-                </button>
-              {/if}
-
-              {#each matchingImportPrefillLicenseOptions as option}
-                <button
-                  type="button"
-                  class="assetlib-tag-option"
-                  on:click={() => addImportPrefillLicense(option)}
-                >
-                  {option}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <TagPicker
+          bind:values={importPrefillLicenses}
+          allOptions={allKnownLicenses}
+          emptyPlaceholder="Add licenses"
+          filledPlaceholder="Add another license"
+          dropdownAriaLabel="License suggestions"
+        />
       </label>
 
       {#snippet actions()}

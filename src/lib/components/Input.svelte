@@ -22,7 +22,7 @@
   } = $props();
 </script>
 
-<div class="assetlib-tag-input-wrap">
+<div class="input-wrap">
   <input
     bind:value
     {type}
@@ -34,3 +34,26 @@
     {step}
   />
 </div>
+
+<style>
+  .input-wrap {
+    width: 100%;
+    min-height: 2.3rem;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    border: 1px solid var(--border-2);
+    padding: 0.5rem;
+    background: var(--surface-inset);
+  }
+
+  input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--app-text);
+    padding: 0.25rem;
+    font: inherit;
+  }
+</style>

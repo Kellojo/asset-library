@@ -7,6 +7,7 @@
   --background: hsla(0, 0%, 5%, 0.5);
   --backgroundTextContrastShadow: hsla(0, 0%, 5%, 0.25);
   --backgroundLight: hsl(0 0% 10% / 0.72);
+  --backgroundLightOpaque: hsl(0 0% 10% / 1);
   --borderColor: hsla(0, 0%, 15%, 0.9);
   --borderHoverColor: hsla(0, 0%, 25%, 0.9);
 
@@ -73,6 +74,7 @@
   --background: hsl(210 26% 94% / 0.72);
   --backgroundTextContrastShadow: hsla(220, 30%, 20%, 0.14);
   --backgroundLight: hsl(210 30% 97% / 0.76);
+  --backgroundLightOpaque: hsl(210 30% 97% / 1);
   --borderColor: hsl(215 24% 82% / 0.92);
   --borderHoverColor: hsl(215 18% 68% / 0.9);
 
@@ -714,33 +716,6 @@ body {
   color: var(--app-text-muted);
 }
 
-.assetlib-tag-picker {
-  position: relative;
-}
-
-.assetlib-tag-input-wrap {
-  width: 100%;
-  min-height: 2.3rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  border-radius: 10px;
-  border: 1px solid var(--border-2);
-  padding: 0.5rem;
-  background: var(--surface-inset);
-}
-
-.assetlib-tag-input-wrap input {
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--app-text);
-  padding: 0.25rem;
-  min-width: 7rem;
-  flex: 1;
-}
-
 .assetlib-description-input {
   width: 100%;
   border-radius: 10px;
@@ -757,66 +732,6 @@ body {
 .assetlib-description-input:focus {
   outline: 1px solid color-mix(in hsl, var(--accent) 65%, white 35%);
   outline-offset: 1px;
-}
-
-.assetlib-tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-2);
-  color: var(--app-text);
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-}
-
-.assetlib-tag-chip-remove {
-  border: none;
-  background: transparent;
-  color: var(--app-text);
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  font-size: 0.875rem;
-}
-
-.assetlib-tag-dropdown {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 0.25rem);
-  display: grid;
-  gap: 0.25rem;
-  border-radius: 10px;
-  border: 1px solid var(--border-2);
-  background: var(--surface-2);
-  padding: 0.5rem;
-  max-height: 180px;
-  overflow: auto;
-  z-index: 85;
-}
-
-.assetlib-tag-option {
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--app-text);
-  text-align: left;
-  border-radius: 8px;
-  padding: 0.5rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.assetlib-tag-option:hover {
-  background: var(--surface-inset);
-  border-color: var(--border-2);
-}
-
-.assetlib-tag-option-create {
-  color: var(--warning);
-  border-color: var(--warning);
-  background: var(--warningSecondary);
 }
 
 .assetlib-modal-actions {

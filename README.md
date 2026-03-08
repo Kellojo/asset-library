@@ -98,6 +98,7 @@ Roadmap:
 - Add support for more file types (e.g. video, fonts, ...)
 - User accounts and permissions
 - Improved infinite scrolling/padination for large libraries
+- Better responsiveness for mobile devices
 
 ## 🛠️ Development
 
