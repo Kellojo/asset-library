@@ -4,6 +4,7 @@
 
   let {
     open = $bindable(false),
+    hasUploadedBefore = false,
     queueRunning = false,
     batchTotal = 0,
     processedCount = 0,
@@ -16,6 +17,7 @@
     lastError = "",
   }: {
     open?: boolean;
+    hasUploadedBefore?: boolean;
     queueRunning?: boolean;
     batchTotal?: number;
     processedCount?: number;
@@ -30,33 +32,35 @@
 </script>
 
 <div class="assetlib-upload-progress-root">
-  <Button
-    extraClass="assetlib-upload-progress-toggle"
-    ariaLabel="Toggle upload progress"
-    title="Toggle upload progress"
-    onclick={() => {
-      open = !open;
-    }}
-  >
-    <span
-      class="assetlib-upload-progress-trigger"
-      aria-expanded={open}
-      aria-controls="assetlib-upload-progress-popup"
+  {#if hasUploadedBefore}
+    <Button
+      extraClass="assetlib-upload-progress-toggle"
+      ariaLabel="Toggle upload progress"
+      title="Toggle upload progress"
+      onclick={() => {
+        open = !open;
+      }}
     >
-      <Icon
-        icon="mdi:upload"
-        width="0.95rem"
-        height="0.95rem"
-        aria-hidden="true"
-      />
-      <span>Uploads</span>
-      {#if queueRunning || batchTotal > 0}
-        <span class="assetlib-upload-progress-badge">{pendingCount}</span>
-      {/if}
-    </span>
-  </Button>
+      <span
+        class="assetlib-upload-progress-trigger"
+        aria-expanded={open}
+        aria-controls="assetlib-upload-progress-popup"
+      >
+        <Icon
+          icon="mdi:upload"
+          width="0.95rem"
+          height="0.95rem"
+          aria-hidden="true"
+        />
+        <span>Uploads</span>
+        {#if queueRunning || batchTotal > 0}
+          <span class="assetlib-upload-progress-badge">{pendingCount}</span>
+        {/if}
+      </span>
+    </Button>
+  {/if}
 
-  {#if open}
+  {#if hasUploadedBefore && open && batchTotal > 0}
     <section
       id="assetlib-upload-progress-popup"
       class="assetlib-upload-progress-popup assetlib-glass"
@@ -66,35 +70,31 @@
         <strong>Upload Progress</strong>
       </div>
 
-      {#if batchTotal === 0}
-        <p class="assetlib-upload-progress-empty">No uploads yet.</p>
-      {:else}
-        <p class="assetlib-upload-progress-status">
-          {queueRunning ? "Uploading" : "Finished"}
-          {processedCount}/{batchTotal}
-          ({progressPercent}%)
+      <p class="assetlib-upload-progress-status">
+        {queueRunning ? "Uploading" : "Finished"}
+        {processedCount}/{batchTotal}
+        ({progressPercent}%)
+      </p>
+      <div class="assetlib-upload-progress-bar" aria-hidden="true">
+        <span style={`width: ${progressPercent}%`}></span>
+      </div>
+
+      {#if currentFileName}
+        <p class="assetlib-upload-progress-current" title={currentFileName}>
+          Current: {currentFileName} ({currentFileProgress}%)
         </p>
-        <div class="assetlib-upload-progress-bar" aria-hidden="true">
-          <span style={`width: ${progressPercent}%`}></span>
-        </div>
+      {/if}
 
-        {#if currentFileName}
-          <p class="assetlib-upload-progress-current" title={currentFileName}>
-            Current: {currentFileName} ({currentFileProgress}%)
-          </p>
-        {/if}
+      <div class="assetlib-upload-progress-stats">
+        <span>Success {succeededCount}</span>
+        <span>Failed {failedCount}</span>
+        <span>Queued {pendingCount}</span>
+      </div>
 
-        <div class="assetlib-upload-progress-stats">
-          <span>Success {succeededCount}</span>
-          <span>Failed {failedCount}</span>
-          <span>Queued {pendingCount}</span>
-        </div>
-
-        {#if lastError}
-          <p class="assetlib-upload-progress-error" title={lastError}>
-            Last error: {lastError}
-          </p>
-        {/if}
+      {#if lastError}
+        <p class="assetlib-upload-progress-error" title={lastError}>
+          Last error: {lastError}
+        </p>
       {/if}
     </section>
   {/if}
@@ -138,6 +138,8 @@
     border-radius: 12px;
     display: grid;
     gap: 0.5rem;
+    transform-origin: top right;
+    animation: assetlib-upload-popup-in 110ms ease-out;
   }
 
   .assetlib-upload-progress-head {
@@ -152,23 +154,6 @@
     letter-spacing: 0.02em;
   }
 
-  .assetlib-upload-progress-close {
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 999px;
-    border: 1px solid var(--border-2);
-    background: var(--surface-2);
-    color: var(--app-text);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-
-  .assetlib-upload-progress-close:hover {
-    border-color: var(--accent);
-  }
-
-  .assetlib-upload-progress-empty,
   .assetlib-upload-progress-status,
   .assetlib-upload-progress-current,
   .assetlib-upload-progress-error {
@@ -223,6 +208,17 @@
     .assetlib-upload-progress-popup {
       right: -0.15rem;
       width: min(18rem, calc(100vw - 1.2rem));
+    }
+  }
+
+  @keyframes assetlib-upload-popup-in {
+    from {
+      opacity: 0;
+      transform: translateY(-3px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 </style>

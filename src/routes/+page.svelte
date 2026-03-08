@@ -72,6 +72,7 @@
   let uploadBatchTotal = 0;
   let uploadProcessedCount = 0;
   let uploadSucceededCount = 0;
+  let uploadHasEverSucceeded = false;
   let uploadFailedCount = 0;
   let uploadCurrentFileName = "";
   let uploadCurrentFileProgress = 0;
@@ -337,7 +338,6 @@
 
     uploadQueue = [...uploadQueue, ...files];
     uploadBatchTotal += files.length;
-    uploadPopupOpen = true;
     successMessage = `Queued ${files.length} file${files.length === 1 ? "" : "s"} for upload.`;
     void processUploadQueue();
   }
@@ -411,6 +411,7 @@
         });
         uploadedCount += 1;
         uploadSucceededCount += 1;
+        uploadHasEverSucceeded = true;
       } catch (error) {
         uploadFailedCount += 1;
         errorMessage =
@@ -418,6 +419,9 @@
         uploadLastError = errorMessage;
       } finally {
         uploadProcessedCount += 1;
+        if (uploadSucceededCount > 0) {
+          uploadPopupOpen = true;
+        }
       }
     }
 
@@ -945,6 +949,7 @@
 
       <UploadProgressPopup
         bind:open={uploadPopupOpen}
+        hasUploadedBefore={uploadHasEverSucceeded}
         {queueRunning}
         batchTotal={uploadBatchTotal}
         processedCount={uploadProcessedCount}
