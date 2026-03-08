@@ -174,6 +174,7 @@
     font-size: 1rem;
     color: var(--app-text);
     text-shadow: 0 2px 12px var(--backgroundTextContrastShadow);
+    word-break: break-all;
   }
 
   .assetlib-card-meta {
