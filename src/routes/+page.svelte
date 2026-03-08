@@ -17,6 +17,8 @@
     categories: "categories",
     tags: "tags",
   } as const;
+  const THEME_STORAGE_KEY = "asset-library-theme";
+  type ThemeMode = "light" | "dark";
 
   const categoryOrder: AssetCategory[] = [
     "model",
@@ -86,6 +88,7 @@
   let didHydrateFiltersFromUrl = false;
   let aiSettingsOpen = false;
   let aiSaving = false;
+  let themeMode: ThemeMode = "dark";
   let uploadInputEl: HTMLInputElement | null = null;
   let editDialogRef: { requestClose: () => void } | null = null;
   let aiDialogRef: { requestClose: () => void } | null = null;
@@ -286,6 +289,32 @@
 
     const todoParam = url.searchParams.get(FILTER_QUERY_KEYS.todo);
     showTodoOnly = todoParam === "1" || todoParam === "true";
+  }
+
+  function applyTheme(theme: ThemeMode): void {
+    if (!browser) return;
+    themeMode = theme;
+    document.documentElement.dataset.theme = theme;
+    globalThis.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }
+
+  function toggleTheme(): void {
+    applyTheme(themeMode === "dark" ? "light" : "dark");
+  }
+
+  function initializeTheme(): void {
+    if (!browser) return;
+
+    const savedTheme = globalThis.localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedTheme === "light" || savedTheme === "dark") {
+      applyTheme(savedTheme);
+      return;
+    }
+
+    const prefersDark = globalThis.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    applyTheme(prefersDark ? "dark" : "light");
   }
 
   function syncUrlFromFilters(): void {
@@ -824,6 +853,7 @@
 
   onMount(loadAssets);
   onMount(loadAiConfig);
+  onMount(initializeTheme);
   onMount(() => {
     syncFiltersFromUrl();
     didHydrateFiltersFromUrl = true;
@@ -920,8 +950,27 @@
         </div>
       </div>
       <h1>Asset Library</h1>
+      <div class="assetlib-title-stats">
+        <span>Total {assets.length}</span>
+        {#if queueRunning}<span class="active">Uploading</span>{/if}
+      </div>
     </div>
     <div class="assetlib-topbar-actions">
+      <Button
+        onclick={toggleTheme}
+        title="Toggle light/dark mode"
+        iconOnly={true}
+      >
+        <Icon
+          icon={themeMode === "dark"
+            ? "mdi:weather-sunny"
+            : "mdi:weather-night"}
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+      </Button>
+
       <Button
         onclick={() => {
           aiSettingsOpen = true;
@@ -965,11 +1014,6 @@
   </header>
 
   <section class="assetlib-glass assetlib-library">
-    <div class="assetlib-summary">
-      <span>Total {assets.length}</span>
-      {#if queueRunning}<span class="active">Uploading</span>{/if}
-    </div>
-
     <div class="assetlib-library-layout">
       <aside class="assetlib-filter-sidebar">
         <div class="assetlib-filter-sidebar-head">

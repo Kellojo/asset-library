@@ -21,13 +21,8 @@
   --border-1: var(--borderColor);
   --border-2: var(--borderHoverColor);
 
-  --button-bg: var(--backgroundLight);
-  --button-bg-hover: hsla(0, 0%, 20%, 0.9);
-  --button-text: var(--primaryText);
-
   --accent: hsl(0 0% 72%);
   --accent-strong: hsl(0 0% 86%);
-  --danger: hsl(0 0% 84%);
 
   --canvas-bg: hsl(0 0% 7%);
   --canvas-grid: hsl(0 0% 70%);
@@ -71,57 +66,56 @@
 }
 
 :root[data-theme="light"] {
-  --primaryText: hsl(222 47% 11%);
-  --secondaryText: hsl(215 16% 40%);
-  --backgroundDark: hsl(210 22% 95% / 0.92);
-  --background: hsl(220 14% 93% / 0.78);
-  --backgroundTextContrastShadow: hsla(222, 35%, 12%, 0.18);
-  --backgroundLight: hsl(210 28% 93% / 0.78);
-  --borderColor: hsl(215 20% 84% / 0.95);
-  --borderHoverColor: hsl(215 18% 74% / 0.95);
+  --primaryText: hsl(220 18% 15%);
+  --secondaryText: hsl(220 10% 42%);
+  --primaryTextInverted: hsl(0 0% 98%);
+  --backgroundDark: hsl(210 30% 97% / 0.94);
+  --background: hsl(210 26% 94% / 0.72);
+  --backgroundTextContrastShadow: hsla(220, 30%, 20%, 0.14);
+  --backgroundLight: hsl(210 30% 97% / 0.76);
+  --borderColor: hsl(215 24% 82% / 0.92);
+  --borderHoverColor: hsl(215 18% 68% / 0.9);
 
-  --app-bg: hsl(210 24% 94%);
-  --app-text: hsl(222 47% 11%);
-  --app-text-muted: hsl(215 16% 40%);
+  --app-bg: hsl(210 36% 96%);
+  --app-text: var(--primaryText);
+  --app-text-muted: var(--secondaryText);
 
   --surface-1: var(--background);
   --surface-2: var(--backgroundLight);
   --surface-inset: var(--background);
 
-  --border-1: hsl(215 20% 84% / 0.95);
-  --border-2: hsl(215 18% 74% / 0.95);
+  --border-1: var(--borderColor);
+  --border-2: var(--borderHoverColor);
 
-  --button-bg: hsl(210 26% 92%);
-  --button-bg-hover: hsl(210 24% 88%);
-  --button-text: hsl(222 47% 11%);
+  --accent: hsl(0 0% 36%);
+  --accent-strong: hsl(0 0% 22%);
 
-  --accent: hsl(0 0% 28%);
-  --accent-strong: hsl(0 0% 18%);
-  --danger: hsl(0 0% 24%);
-
-  --canvas-bg: hsl(210 22% 94%);
-  --canvas-grid: hsl(210 18% 62%);
-  --canvas-grid-opacity: 0.24;
-  --bg-glow-a: hsl(198 70% 52% / 0.18);
-  --bg-glow-b: hsl(28 88% 54% / 0.12);
-  --bg-glow-c: hsl(262 72% 60% / 0.1);
-  --bg-grid-strong: hsl(215 28% 34% / 0.1);
-  --bg-grid-soft: hsl(215 20% 42% / 0.06);
+  --canvas-bg: hsl(210 30% 96%);
+  --canvas-grid: hsl(210 14% 56%);
+  --canvas-grid-opacity: 0.2;
+  --bg-glow-a: hsl(192 78% 52% / 0.16);
+  --bg-glow-b: hsl(32 88% 56% / 0.11);
+  --bg-glow-c: hsl(276 70% 64% / 0.1);
+  --bg-grid-strong: hsl(214 24% 36% / 0.09);
+  --bg-grid-soft: hsl(214 20% 46% / 0.05);
   --handle-fill: hsl(0 0% 100%);
 
-  --shadow-highlight: hsla(0, 0%, 100%, 0.9);
-  --shadow-dark: hsla(222, 35%, 12%, 0.12);
-  --shadow-mid: hsla(222, 35%, 12%, 0.08);
+  --shadow-highlight: hsla(0, 0%, 100%, 0.92);
+  --shadow-dark: hsla(220, 32%, 18%, 0.14);
+  --shadow-mid: hsla(220, 30%, 18%, 0.09);
   --glass-blur: 0.625rem;
 
-  --success: hsl(0 0% 22%);
-  --successSecondary: hsl(0 0% 86%);
-  --warning: hsl(0 0% 28%);
-  --warningSecondary: hsl(0 0% 90%);
-  --error: hsl(0 0% 24%);
-  --errorSecondary: hsl(0 0% 88%);
-  --info: hsl(0 0% 20%);
-  --infoSecondary: hsl(0 0% 84%);
+  --success: hsl(108, 60%, 57%);
+  --successSecondary: hsl(108, 60%, 17%);
+
+  --warning: hsl(39, 100%, 50%);
+  --warningSecondary: hsl(39, 100%, 10%);
+
+  --error: hsl(0, 80%, 60%);
+  --errorSecondary: hsl(0, 80%, 20%);
+
+  --info: hsl(204, 100%, 50%);
+  --infoSecondary: hsl(204, 100%, 15%);
 }
 
 :root {
@@ -262,8 +256,14 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
+.assetlib-title-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
 .assetlib-title-icon-reel {
   position: relative;
   width: 1.7rem;
@@ -362,14 +362,31 @@ body {
   background: var(--surface-2);
   color: var(--app-text);
 }
+.assetlib-title-stats span {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--app-text);
+}
 
 .assetlib-summary .todo {
   border-color: var(--warning);
   color: var(--warning);
   background: var(--warningSecondary);
 }
+.assetlib-title-stats .todo {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warningSecondary);
+}
 
 .assetlib-summary .active {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+.assetlib-title-stats .active {
   border-color: var(--accent-strong);
   color: var(--accent-strong);
 }
