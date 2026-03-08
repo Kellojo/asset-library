@@ -26,9 +26,10 @@
   },
   "dependencies": {
     "@iconify/svelte": "^5.2.1",
+    "fuse.js": "^7.1.0",
+    "image-size": "^1.1.0",
     "svelte-sonner": "^1.0.8",
     "three": "^0.183.2",
-    "wavesurfer.js": "^7.12.1",
-    "image-size": "^1.1.0"
+    "wavesurfer.js": "^7.12.1"
   }
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import Fuse from "fuse.js";
   import { Toaster, toast } from "svelte-sonner";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
@@ -96,16 +97,36 @@
     customInstruction: "",
   };
   const textPreviews: Record<string, string> = {};
+  let fuzzyMatchedAssetIds: Set<string> | null = null;
+
+  $: normalizedSearchQuery = searchQuery.trim();
+  $: {
+    const q = normalizedSearchQuery;
+    if (!q) {
+      fuzzyMatchedAssetIds = null;
+    } else {
+      const fuse = new Fuse(assets, {
+        threshold: 0.35,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+        keys: [
+          { name: "title", weight: 0.35 },
+          { name: "description", weight: 0.25 },
+          { name: "tags", weight: 0.2 },
+          { name: "originalName", weight: 0.15 },
+          { name: "category", weight: 0.05 },
+        ],
+      });
+
+      fuzzyMatchedAssetIds = new Set(
+        fuse.search(q).map((result) => result.item.id),
+      );
+    }
+  }
 
   $: visibleAssets = assets.filter((asset) => {
-    const q = searchQuery.trim().toLowerCase();
     const matchesQuery =
-      !q ||
-      asset.title.toLowerCase().includes(q) ||
-      asset.description.toLowerCase().includes(q) ||
-      asset.originalName.toLowerCase().includes(q) ||
-      asset.tags.some((tag) => tag.toLowerCase().includes(q)) ||
-      asset.category.toLowerCase().includes(q);
+      !normalizedSearchQuery || !!fuzzyMatchedAssetIds?.has(asset.id);
     const matchesTodo = !showTodoOnly || !asset.metadataEdited;
     const matchesCategory =
       selectedCategories.length === 0 ||
