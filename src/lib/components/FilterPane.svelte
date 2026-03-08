@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { slide } from "svelte/transition";
   import type { AssetCategory } from "$lib/types";
   import Button from "$lib/components/Button.svelte";
   import SearchField from "$lib/components/SearchField.svelte";
@@ -67,6 +68,11 @@
       selectedCategories.length > 0 ||
       showTodoOnly,
   );
+
+  let statusOpen = $state(true);
+  let categoryOpen = $state(true);
+  let tagsOpen = $state(true);
+  let licensesOpen = $state(true);
 </script>
 
 <aside class="pane">
@@ -77,96 +83,184 @@
   </div>
 
   <div class="section">
-    <span class="title">Status</span>
     <button
       type="button"
-      class="item"
-      class:is-selected={showTodoOnly}
-      aria-pressed={showTodoOnly}
+      class="section-toggle"
+      aria-expanded={statusOpen}
       onclick={() => {
-        showTodoOnly = !showTodoOnly;
+        statusOpen = !statusOpen;
       }}
     >
-      <span class="label">
+      <span class="title">Status</span>
+      <span class="chevron" class:is-open={statusOpen}>
         <Icon
-          icon="mdi:checkbox-marked-outline"
-          width="0.9rem"
-          height="0.9rem"
+          icon="mdi:chevron-down"
+          width="1rem"
+          height="1rem"
           aria-hidden="true"
         />
-        <span>Only To Do</span>
       </span>
-      <span class="count">{todoCount}</span>
     </button>
-  </div>
 
-  <div class="section">
-    <span class="title">Category</span>
-    <div class="list">
-      {#each categoryCounts as row}
+    {#if statusOpen}
+      <div class="section-content" transition:slide={{ duration: 160 }}>
         <button
           type="button"
           class="item"
-          class:is-selected={selectedCategories.includes(row.category)}
-          onclick={() => toggleCategory(row.category)}
+          class:is-selected={showTodoOnly}
+          aria-pressed={showTodoOnly}
+          onclick={() => {
+            showTodoOnly = !showTodoOnly;
+          }}
         >
           <span class="label">
             <Icon
-              icon={categoryIconByType[row.category]}
+              icon="mdi:checkbox-marked-outline"
               width="0.9rem"
               height="0.9rem"
               aria-hidden="true"
             />
-            <span>{formatCategoryLabel(row.category)}</span>
+            <span>Only To Do</span>
           </span>
-          <span class="count">{row.count}</span>
+          <span class="count">{todoCount}</span>
         </button>
-      {/each}
-    </div>
+      </div>
+    {/if}
   </div>
 
   <div class="section">
-    <span class="title">Tags</span>
-    <SearchField
-      bind:value={filterTagQuery}
-      placeholder="Filter tags"
-      onkeydown={onFilterTagQueryKeyDown}
-    />
-    <div class="list list-scroll">
-      {#each filteredTagRows as row}
-        <button
-          type="button"
-          class="item"
-          class:is-selected={row.selected}
-          onclick={() => toggleFilterTag(row.tag)}
-        >
-          <span>{row.tag}</span>
-          <span class="count">{row.count}</span>
-        </button>
-      {/each}
-    </div>
+    <button
+      type="button"
+      class="section-toggle"
+      aria-expanded={categoryOpen}
+      onclick={() => {
+        categoryOpen = !categoryOpen;
+      }}
+    >
+      <span class="title">Category</span>
+      <span class="chevron" class:is-open={categoryOpen}>
+        <Icon
+          icon="mdi:chevron-down"
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+      </span>
+    </button>
+
+    {#if categoryOpen}
+      <div class="section-content" transition:slide={{ duration: 160 }}>
+        <div class="list">
+          {#each categoryCounts as row}
+            <button
+              type="button"
+              class="item"
+              class:is-selected={selectedCategories.includes(row.category)}
+              onclick={() => toggleCategory(row.category)}
+            >
+              <span class="label">
+                <Icon
+                  icon={categoryIconByType[row.category]}
+                  width="0.9rem"
+                  height="0.9rem"
+                  aria-hidden="true"
+                />
+                <span>{formatCategoryLabel(row.category)}</span>
+              </span>
+              <span class="count">{row.count}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </div>
 
   <div class="section">
-    <span class="title">Licenses</span>
-    <SearchField
-      bind:value={filterLicenseQuery}
-      placeholder="Filter licenses"
-      onkeydown={onFilterLicenseQueryKeyDown}
-    />
-    <div class="list list-scroll">
-      {#each filteredLicenseRows as row}
-        <button
-          type="button"
-          class="item"
-          class:is-selected={row.selected}
-          onclick={() => toggleFilterLicense(row.license)}
-        >
-          <span>{row.license}</span>
-          <span class="count">{row.count}</span>
-        </button>
-      {/each}
-    </div>
+    <button
+      type="button"
+      class="section-toggle"
+      aria-expanded={tagsOpen}
+      onclick={() => {
+        tagsOpen = !tagsOpen;
+      }}
+    >
+      <span class="title">Tags</span>
+      <span class="chevron" class:is-open={tagsOpen}>
+        <Icon
+          icon="mdi:chevron-down"
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+      </span>
+    </button>
+
+    {#if tagsOpen}
+      <div class="section-content" transition:slide={{ duration: 160 }}>
+        <SearchField
+          bind:value={filterTagQuery}
+          placeholder="Filter tags"
+          onkeydown={onFilterTagQueryKeyDown}
+        />
+        <div class="list list-scroll">
+          {#each filteredTagRows as row}
+            <button
+              type="button"
+              class="item"
+              class:is-selected={row.selected}
+              onclick={() => toggleFilterTag(row.tag)}
+            >
+              <span>{row.tag}</span>
+              <span class="count">{row.count}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <div class="section">
+    <button
+      type="button"
+      class="section-toggle"
+      aria-expanded={licensesOpen}
+      onclick={() => {
+        licensesOpen = !licensesOpen;
+      }}
+    >
+      <span class="title">Licenses</span>
+      <span class="chevron" class:is-open={licensesOpen}>
+        <Icon
+          icon="mdi:chevron-down"
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+      </span>
+    </button>
+
+    {#if licensesOpen}
+      <div class="section-content" transition:slide={{ duration: 160 }}>
+        <SearchField
+          bind:value={filterLicenseQuery}
+          placeholder="Filter licenses"
+          onkeydown={onFilterLicenseQueryKeyDown}
+        />
+        <div class="list list-scroll">
+          {#each filteredLicenseRows as row}
+            <button
+              type="button"
+              class="item"
+              class:is-selected={row.selected}
+              onclick={() => toggleFilterLicense(row.license)}
+            >
+              <span>{row.license}</span>
+              <span class="count">{row.count}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </div>
 </aside>
 
@@ -248,9 +342,37 @@
     letter-spacing: 0.04em;
   }
 
+  .section-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .chevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--app-text-muted);
+    transition: transform 140ms ease;
+  }
+
+  .chevron.is-open {
+    transform: rotate(180deg);
+  }
+
   .list {
     display: grid;
     gap: 0.5rem;
+  }
+
+  .section-content {
+    display: grid;
+    gap: 0.5rem;
+    overflow: hidden;
   }
 
   .list-scroll {
