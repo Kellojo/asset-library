@@ -119,6 +119,7 @@
   let themeMode: ThemeMode = "dark";
   let uploadInputEl: HTMLInputElement | null = null;
   let replaceInputEl: HTMLInputElement | null = null;
+  let showBackToTop = false;
   let editDialogRef: { requestClose: () => void } | null = null;
   let aiDialogRef: { requestClose: () => void } | null = null;
   let aiConfig = {
@@ -408,6 +409,16 @@
   function openGitHubRepo(): void {
     if (!browser) return;
     globalThis.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
+  }
+
+  function onWindowScroll(): void {
+    if (!browser) return;
+    showBackToTop = globalThis.scrollY > 420;
+  }
+
+  function scrollToTop(): void {
+    if (!browser) return;
+    globalThis.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function initializeTheme(): void {
@@ -1112,6 +1123,7 @@
   onMount(loadAssets);
   onMount(loadAiConfig);
   onMount(initializeTheme);
+  onMount(onWindowScroll);
   onMount(() => {
     syncFiltersFromUrl();
     didHydrateFiltersFromUrl = true;
@@ -1172,6 +1184,7 @@
   on:drop={onDrop}
   on:keydown={onWindowKeyDown}
   on:mousedown={onWindowMouseDown}
+  on:scroll={onWindowScroll}
 />
 
 <main class="assetlib-shell">
@@ -1764,5 +1777,17 @@
         <Button onclick={closeImportPrefillDialog}>Cancel</Button>
       {/snippet}
     </Dialog>
+  {/if}
+
+  {#if showBackToTop}
+    <Button
+      onclick={scrollToTop}
+      extraClass="assetlib-back-to-top"
+      title="Back to top"
+      ariaLabel="Back to top"
+      iconOnly={true}
+    >
+      <Icon icon="mdi:arrow-up" width="1rem" height="1rem" aria-hidden="true" />
+    </Button>
   {/if}
 </main>
