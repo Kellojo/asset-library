@@ -1,21 +1,19 @@
 # Asset Library (SvelteKit)
 
-A simple self-hosted asset library for:
+A simple self-hosted asset library for your game development needs:
 
 - Uploading assets: audio, textures, shaders, scripts, and 3D models
-- Storing metadata: title, tags, and upload date
-- Downloading assets
-- Inline previews where possible:
-- Audio: built-in audio player
-- Textures: image preview
-- 3D models: `.glb` and `.gltf` preview
-- Scripts/Shaders/Text-like files: text preview
+- Storing metadata: title, tags, upload date, description, license, source
+- Asset previews for 3D models, audio and text/code
+- AI integration, which automatically tags/describes imported files
+- Downloading/Replacing assets
+- Strong filtering and searching functionalities
+  - Filtering by tag, type, ...
+  - Many sorting options
+  - Fuzzy search using Fuse.js
+- File deduplication using hashes
+- File-based storage (no external database needed)
 
-## Stack
-
-- SvelteKit
-- Node adapter (`@sveltejs/adapter-node`)
-- File-based storage (no external database)
 
 ## Storage Layout
 
@@ -26,29 +24,7 @@ At runtime the app creates a `data/` directory in the project root:
 
 This keeps setup very small and easy to back up.
 
-## Development
 
-```bash
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`.
-
-## Production (Self-Hosted)
-
-```bash
-npm install
-npm run build
-npm run start
-```
-
-By default it listens on port `3000`. You can override:
-
-```bash
-set PORT=8080
-npm run start
-```
 
 On Linux/macOS use:
 
@@ -107,3 +83,12 @@ Notes:
 
 - Back up `data/` regularly.
 - To move the library to another server, copy the project and `data/` folder.
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`.
