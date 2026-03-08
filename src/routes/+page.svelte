@@ -14,7 +14,10 @@
   import SearchField from "$lib/components/SearchField.svelte";
   import SelectField from "$lib/components/SelectField.svelte";
   import TagPicker from "$lib/components/TagPicker.svelte";
-  import UploadProgressPopup from "$lib/components/UploadProgressPopup.svelte";
+  import {
+    AssetLibraryApiService,
+    type AiConfig,
+  } from "$lib/services/asset-library-api";
 
   const FILTER_QUERY_KEYS = {
     todo: "todo",
@@ -72,9 +75,6 @@
 
   let assets: AssetView[] = [];
   let loading = true;
-  let errorMessage = "";
-  let warningMessage = "";
-  let successMessage = "";
 
   let isDragging = false;
   let pageDragDepth = 0;
@@ -90,15 +90,8 @@
 
   let uploadQueue: QueuedUpload[] = [];
   let queueRunning = false;
-  let uploadPopupOpen = false;
   let uploadBatchTotal = 0;
   let uploadProcessedCount = 0;
-  let uploadSucceededCount = 0;
-  let uploadHasEverSucceeded = false;
-  let uploadFailedCount = 0;
-  let uploadCurrentFileName = "";
-  let uploadCurrentFileProgress = 0;
-  let uploadLastError = "";
   let importPrefillOpen = false;
   let importPrefillSourceUrl = "";
   let importPrefillLicenses: string[] = [];
@@ -130,6 +123,7 @@
     timeoutMs: 12000,
     customInstruction: "",
   };
+  const api = new AssetLibraryApiService();
   const textPreviews: Record<string, string> = {};
   let fuzzyMatchedAssetIds: Set<string> | null = null;
   let fuzzyRankByAssetId: Map<string, number> | null = null;
@@ -307,17 +301,6 @@
     ),
   ).sort((a, b) => a.localeCompare(b));
   $: uploadPendingCount = Math.max(0, uploadBatchTotal - uploadProcessedCount);
-  $: uploadOverallUnits =
-    uploadProcessedCount +
-    (queueRunning && uploadCurrentFileName
-      ? uploadCurrentFileProgress / 100
-      : 0);
-  $: uploadProgressPercent =
-    uploadBatchTotal === 0
-      ? 0
-      : Math.round(
-          Math.min(100, (uploadOverallUnits / uploadBatchTotal) * 100),
-        );
 
   function hasFilePayload(event: DragEvent): boolean {
     const types = event.dataTransfer?.types;
@@ -514,26 +497,20 @@
     if (!queueRunning && queuedBefore === 0) {
       uploadBatchTotal = 0;
       uploadProcessedCount = 0;
-      uploadSucceededCount = 0;
-      uploadFailedCount = 0;
-      uploadCurrentFileName = "";
-      uploadCurrentFileProgress = 0;
-      uploadLastError = "";
     }
 
     uploadQueue = [...uploadQueue, ...queuedUploads];
     uploadBatchTotal += files.length;
-    successMessage = `Queued ${files.length} file${files.length === 1 ? "" : "s"} for upload.`;
+    toast.success(
+      `Queued ${files.length} file${files.length === 1 ? "" : "s"} for upload.`,
+    );
 
     pendingImportFiles = [];
     importPrefillOpen = false;
     void processUploadQueue();
   }
 
-  async function uploadSingleFile(
-    upload: QueuedUpload,
-    onProgress: (loadedBytes: number, totalBytes: number) => void,
-  ): Promise<void> {
+  async function uploadSingleFile(upload: QueuedUpload): Promise<void> {
     const { file, sourceUrl, licenses } = upload;
     const form = new FormData();
     form.set("title", titleFromFileName(file.name));
@@ -542,105 +519,50 @@
     form.set("licenses", licenses.join(","));
     form.set("file", file);
 
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/assets");
-
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return;
-        onProgress(event.loaded, event.total);
-      };
-
-      xhr.onerror = () => {
-        reject(new Error(`Upload failed for ${file.name}.`));
-      };
-
-      xhr.onabort = () => {
-        reject(new Error(`Upload cancelled for ${file.name}.`));
-      };
-
-      xhr.onload = () => {
-        let payload: { error?: string; duplicate?: boolean } = {};
-        if (xhr.responseText) {
-          try {
-            payload = JSON.parse(xhr.responseText) as { error?: string };
-          } catch {
-            // Ignore parse errors and use fallback message.
-          }
-        }
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          onProgress(1, 1);
-          resolve();
-          return;
-        }
-
-        reject(new Error(payload.error || `Upload failed for ${file.name}.`));
-      };
-
-      xhr.send(form);
-    });
+    await api.uploadAsset(form, file.name, () => {});
   }
 
   async function processUploadQueue(): Promise<void> {
     if (queueRunning) return;
     queueRunning = true;
-    errorMessage = "";
 
     let uploadedCount = 0;
     while (uploadQueue.length > 0) {
       const nextUpload = uploadQueue[0];
       uploadQueue = uploadQueue.slice(1);
-      uploadCurrentFileName = nextUpload.file.name;
-      uploadCurrentFileProgress = 0;
       try {
-        await uploadSingleFile(nextUpload, (loadedBytes, totalBytes) => {
-          uploadCurrentFileProgress =
-            totalBytes > 0
-              ? Math.round((loadedBytes / totalBytes) * 100)
-              : uploadCurrentFileProgress;
-        });
+        await uploadSingleFile(nextUpload);
         uploadedCount += 1;
-        uploadSucceededCount += 1;
-        uploadHasEverSucceeded = true;
       } catch (error) {
-        uploadFailedCount += 1;
         const message =
           error instanceof Error ? error.message : "Upload failed.";
         if (message.toLowerCase().includes("duplicate")) {
-          warningMessage = message;
+          toast.warning(message);
         } else {
-          errorMessage = message;
+          toast.error(message);
         }
-        uploadLastError = message;
       } finally {
         uploadProcessedCount += 1;
-        if (uploadSucceededCount > 0) {
-          uploadPopupOpen = true;
-        }
       }
     }
 
     queueRunning = false;
-    uploadCurrentFileName = "";
-    uploadCurrentFileProgress = 0;
     if (uploadedCount > 0) {
-      successMessage = `Uploaded ${uploadedCount} file${uploadedCount === 1 ? "" : "s"}.`;
+      toast.success(
+        `Uploaded ${uploadedCount} file${uploadedCount === 1 ? "" : "s"}.`,
+      );
       await loadAssets();
     }
   }
 
   async function loadAssets(): Promise<void> {
     loading = true;
-    errorMessage = "";
     try {
-      const response = await fetch("/api/assets");
-      if (!response.ok) throw new Error("Failed to load assets.");
-      const payload = (await response.json()) as { assets: AssetView[] };
-      assets = payload.assets;
+      assets = await api.listAssets();
     } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : "Failed to load assets.";
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load assets.",
+      );
     } finally {
       loading = false;
     }
@@ -648,10 +570,9 @@
 
   async function loadAiConfig(): Promise<void> {
     try {
-      const response = await fetch("/api/integrations/ai");
-      if (!response.ok) return;
-      const payload = (await response.json()) as { config: typeof aiConfig };
-      aiConfig = payload.config;
+      const config = await api.getAiConfig();
+      if (!config) return;
+      aiConfig = config;
     } catch {
       // Optional integration; ignore transient failures.
     }
@@ -659,29 +580,17 @@
 
   async function saveAiConfig(): Promise<void> {
     aiSaving = true;
-    errorMessage = "";
-    successMessage = "";
 
     try {
-      const response = await fetch("/api/integrations/ai", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(aiConfig),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || "Failed to save AI settings.");
-      }
-
-      aiConfig = payload.config;
+      aiConfig = await api.saveAiConfig(aiConfig as AiConfig);
       aiSettingsOpen = false;
-      successMessage = aiConfig.enabled
-        ? "AI auto metadata enabled."
-        : "AI settings saved.";
+      toast.success(
+        aiConfig.enabled ? "AI auto metadata enabled." : "AI settings saved.",
+      );
     } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : "Failed to save AI settings.";
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save AI settings.",
+      );
     } finally {
       aiSaving = false;
     }
@@ -728,8 +637,6 @@
         : ["Unknown"];
     editSourceUrl = asset.sourceUrl ?? "";
     editDescription = asset.description ?? "";
-    errorMessage = "";
-    successMessage = "";
   }
 
   function cancelEdit(): void {
@@ -853,40 +760,18 @@
     if (!editingAssetId || !file) return;
 
     replaceInProgress = true;
-    errorMessage = "";
-    warningMessage = "";
-    successMessage = "";
 
     try {
-      const form = new FormData();
-      form.set("file", file);
+      await api.replaceAssetFile(editingAssetId, file);
 
-      const response = await fetch(`/api/assets/${editingAssetId}/file`, {
-        method: "PATCH",
-        body: form,
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        duplicate?: boolean;
-      };
-
-      if (!response.ok) {
-        const message = payload.error || "Failed to replace file.";
-        if (payload.duplicate) {
-          warningMessage = message;
-        } else {
-          errorMessage = message;
-        }
-        return;
-      }
-
-      successMessage = "File replaced. Please review metadata.";
+      toast.success("File replaced. Please review metadata.");
       await loadAssets();
     } catch (errorValue) {
-      errorMessage =
+      toast.error(
         errorValue instanceof Error
           ? errorValue.message
-          : "Failed to replace file.";
+          : "Failed to replace file.",
+      );
     } finally {
       replaceInProgress = false;
     }
@@ -915,36 +800,27 @@
   }
 
   async function saveMetadata(assetId: string): Promise<void> {
-    errorMessage = "";
-    successMessage = "";
-
     if (editLicenses.length === 0) {
-      errorMessage = "At least one license is required.";
+      toast.error("At least one license is required.");
       return;
     }
 
     saveInProgress = true;
     try {
-      const response = await fetch(`/api/assets/${assetId}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription,
-          tags: editTags,
-          licenses: editLicenses,
-          sourceUrl: editSourceUrl,
-        }),
+      await api.updateAsset(assetId, {
+        title: editTitle,
+        description: editDescription,
+        tags: editTags,
+        licenses: editLicenses,
+        sourceUrl: editSourceUrl,
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || "Failed to save metadata.");
-      successMessage = "Metadata updated.";
+      toast.success("Metadata updated.");
       closeEditDialog();
       await loadAssets();
     } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : "Failed to save metadata.";
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save metadata.",
+      );
     } finally {
       saveInProgress = false;
     }
@@ -956,22 +832,16 @@
     );
     if (!shouldDelete) return;
 
-    errorMessage = "";
-    successMessage = "";
     deletingAssetId = asset.id;
     try {
-      const response = await fetch(`/api/assets/${asset.id}`, {
-        method: "DELETE",
-      });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || "Failed to delete asset.");
+      await api.deleteAsset(asset.id);
       if (editingAssetId === asset.id) cancelEdit();
-      successMessage = "Asset deleted.";
+      toast.success("Asset deleted.");
       await loadAssets();
     } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : "Failed to delete asset.";
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete asset.",
+      );
     } finally {
       deletingAssetId = null;
     }
@@ -979,10 +849,9 @@
 
   async function loadTextPreview(asset: AssetView): Promise<void> {
     if (textPreviews[asset.id] !== undefined) return;
-    const response = await fetch(asset.textPreviewUrl);
-    if (!response.ok) return;
-    const payload = (await response.json()) as { text: string };
-    textPreviews[asset.id] = payload.text;
+    const text = await api.getTextPreview(asset.textPreviewUrl);
+    if (text === null) return;
+    textPreviews[asset.id] = text;
   }
 
   function formatTimeAgo(iso: string): string {
@@ -1042,21 +911,6 @@
     sortMode;
     syncUrlFromFilters();
   }
-
-  $: if (errorMessage) {
-    toast.error(errorMessage);
-    errorMessage = "";
-  }
-
-  $: if (warningMessage) {
-    toast.warning(warningMessage);
-    warningMessage = "";
-  }
-
-  $: if (successMessage) {
-    toast.success(successMessage);
-    successMessage = "";
-  }
 </script>
 
 <svelte:window
@@ -1100,7 +954,17 @@
       <h1>Asset Library</h1>
       <div class="assetlib-title-stats">
         <span>{assets.length}</span>
-        {#if queueRunning}<span class="active">Uploading</span>{/if}
+        {#if uploadPendingCount > 0}
+          <span class="active assetlib-upload-indicator" aria-live="polite">
+            <Icon
+              icon="codex:loader"
+              width="1rem"
+              height="1rem"
+              aria-hidden="true"
+            />
+            Uploading {uploadPendingCount} left
+          </span>
+        {/if}
       </div>
     </div>
     <div class="assetlib-topbar-actions">
@@ -1157,21 +1021,6 @@
         <Icon icon="mdi:upload" width="1rem" height="1rem" aria-hidden="true" />
         Import Files
       </Button>
-
-      <UploadProgressPopup
-        bind:open={uploadPopupOpen}
-        hasUploadedBefore={uploadHasEverSucceeded}
-        {queueRunning}
-        batchTotal={uploadBatchTotal}
-        processedCount={uploadProcessedCount}
-        pendingCount={uploadPendingCount}
-        succeededCount={uploadSucceededCount}
-        failedCount={uploadFailedCount}
-        currentFileName={uploadCurrentFileName}
-        currentFileProgress={uploadCurrentFileProgress}
-        progressPercent={uploadProgressPercent}
-        lastError={uploadLastError}
-      />
     </div>
   </header>
 
