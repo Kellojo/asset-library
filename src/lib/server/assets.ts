@@ -348,6 +348,89 @@ export async function updateAssetMetadata(
   return records[index];
 }
 
+export async function replaceAssetFile(
+  id: string,
+  replacement: {
+    fileName: string;
+    mimeType: string;
+    size: number;
+    bytes: Uint8Array;
+  },
+): Promise<AssetRecord | undefined> {
+  await ensureStorage();
+  const records = await readAssets();
+  const { records: recordsWithHashes, updated } =
+    await ensureAssetHashes(records);
+  const index = recordsWithHashes.findIndex((record) => record.id === id);
+  if (index === -1) {
+    if (updated) {
+      await writeAssets(recordsWithHashes);
+    }
+    return undefined;
+  }
+
+  const incomingHash = computeAssetHash(replacement.bytes);
+  const duplicate = recordsWithHashes.find(
+    (record) => record.id !== id && record.hash === incomingHash,
+  );
+  if (duplicate) {
+    throw new DuplicateAssetError(duplicate);
+  }
+
+  const current = recordsWithHashes[index];
+  const ext = path.extname(replacement.fileName);
+  const storedName = `${id}${ext}`;
+  const category = getCategory(replacement.fileName, replacement.mimeType);
+  const previewKind = getPreviewKind(
+    category,
+    replacement.fileName,
+    replacement.mimeType,
+  );
+
+  let width: number | undefined;
+  let height: number | undefined;
+  if (previewKind === "image") {
+    try {
+      const { default: sizeOf } = await import("image-size");
+      const dims = sizeOf(Buffer.from(replacement.bytes));
+      if (
+        dims &&
+        typeof dims.width === "number" &&
+        typeof dims.height === "number"
+      ) {
+        width = dims.width;
+        height = dims.height;
+      }
+    } catch {
+      // Ignore image dimension probe failures.
+    }
+  }
+
+  await writeFile(path.join(uploadsDir, storedName), replacement.bytes);
+  if (storedName !== current.storedName) {
+    await rm(path.join(uploadsDir, current.storedName), { force: true });
+  }
+
+  recordsWithHashes[index] = {
+    ...current,
+    originalName: replacement.fileName,
+    storedName,
+    hash: incomingHash,
+    mimeType: replacement.mimeType || "application/octet-stream",
+    size: replacement.size,
+    category,
+    previewKind,
+    width,
+    height,
+    uploadDate: new Date().toISOString(),
+    // Replacement can invalidate descriptive metadata; flag for review.
+    metadataEdited: false,
+  };
+
+  await writeAssets(recordsWithHashes);
+  return recordsWithHashes[index];
+}
+
 export async function deleteAsset(id: string): Promise<boolean> {
   const records = await readAssets();
   const index = records.findIndex((record) => record.id === id);

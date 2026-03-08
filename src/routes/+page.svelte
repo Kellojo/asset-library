@@ -68,6 +68,7 @@
   let editSourceUrl = "";
   let editDescription = "";
   let saveInProgress = false;
+  let replaceInProgress = false;
 
   let uploadQueue: File[] = [];
   let queueRunning = false;
@@ -91,6 +92,7 @@
   let aiSaving = false;
   let themeMode: ThemeMode = "dark";
   let uploadInputEl: HTMLInputElement | null = null;
+  let replaceInputEl: HTMLInputElement | null = null;
   let editDialogRef: { requestClose: () => void } | null = null;
   let aiDialogRef: { requestClose: () => void } | null = null;
   let aiConfig = {
@@ -734,6 +736,57 @@
     void saveMetadata(editingAssetId);
   }
 
+  function triggerReplaceFilePicker(): void {
+    replaceInputEl?.click();
+  }
+
+  async function replaceActiveAssetFile(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+
+    if (!editingAssetId || !file) return;
+
+    replaceInProgress = true;
+    errorMessage = "";
+    warningMessage = "";
+    successMessage = "";
+
+    try {
+      const form = new FormData();
+      form.set("file", file);
+
+      const response = await fetch(`/api/assets/${editingAssetId}/file`, {
+        method: "PATCH",
+        body: form,
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        duplicate?: boolean;
+      };
+
+      if (!response.ok) {
+        const message = payload.error || "Failed to replace file.";
+        if (payload.duplicate) {
+          warningMessage = message;
+        } else {
+          errorMessage = message;
+        }
+        return;
+      }
+
+      successMessage = "File replaced. Please review metadata.";
+      await loadAssets();
+    } catch (errorValue) {
+      errorMessage =
+        errorValue instanceof Error
+          ? errorValue.message
+          : "Failed to replace file.";
+    } finally {
+      replaceInProgress = false;
+    }
+  }
+
   function closeEditDialog(): void {
     if (editDialogRef) {
       editDialogRef.requestClose();
@@ -1153,6 +1206,13 @@
         <Input bind:value={editTitle} minlength={2} maxlength={120} />
       </label>
 
+      <input
+        bind:this={replaceInputEl}
+        type="file"
+        class="assetlib-file-input-hidden"
+        on:change={replaceActiveAssetFile}
+      />
+
       <label class="assetlib-modal-label">
         <span>Tags</span>
         <div class="assetlib-tag-picker">
@@ -1297,8 +1357,22 @@
 
       {#snippet actions()}
         <Button
+          disabled={
+            saveInProgress ||
+            replaceInProgress ||
+            deletingAssetId === editingAssetId
+          }
+          onclick={triggerReplaceFilePicker}
+        >
+          {replaceInProgress ? "Replacing..." : "Replace File"}
+        </Button>
+        <Button
           variant="delete"
-          disabled={saveInProgress || deletingAssetId === editingAssetId}
+          disabled={
+            saveInProgress ||
+            replaceInProgress ||
+            deletingAssetId === editingAssetId
+          }
           onclick={() => {
             const asset = assets.find((item) => item.id === editingAssetId);
             if (!asset) return;
@@ -1310,11 +1384,13 @@
         <Button
           variant="emphasized"
           onclick={saveActiveEdit}
-          disabled={saveInProgress}
+          disabled={saveInProgress || replaceInProgress}
         >
           {saveInProgress ? "Saving..." : "Save"}
         </Button>
-        <Button onclick={closeEditDialog}>Cancel</Button>
+        <Button onclick={closeEditDialog} disabled={replaceInProgress}
+          >Cancel</Button
+        >
       {/snippet}
     </Dialog>
   {/if}

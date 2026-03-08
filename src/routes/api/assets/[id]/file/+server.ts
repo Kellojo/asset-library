@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { error, type RequestHandler } from "@sveltejs/kit";
-import { getAssetById, getStoredFilePath } from "$lib/server/assets";
+import { error, json, type RequestHandler } from "@sveltejs/kit";
+import {
+  DuplicateAssetError,
+  getAssetById,
+  getStoredFilePath,
+  replaceAssetFile,
+  toAssetView,
+} from "$lib/server/assets";
 
 const FILE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
@@ -120,4 +126,46 @@ export const HEAD: RequestHandler = async ({ params }) => {
       ...buildCacheHeaders(asset),
     },
   });
+};
+
+export const PATCH: RequestHandler = async ({ params, request }) => {
+  if (!params.id) {
+    return json({ error: "Missing asset id." }, { status: 400 });
+  }
+
+  const form = await request.formData();
+  const fileValue = form.get("file");
+  if (!(fileValue instanceof File)) {
+    return json({ error: "A replacement file is required." }, { status: 400 });
+  }
+
+  const arrayBuffer = await fileValue.arrayBuffer();
+
+  try {
+    const updated = await replaceAssetFile(params.id, {
+      fileName: fileValue.name,
+      mimeType: fileValue.type,
+      size: fileValue.size,
+      bytes: new Uint8Array(arrayBuffer),
+    });
+
+    if (!updated) {
+      return json({ error: "Asset not found." }, { status: 404 });
+    }
+
+    return json({ asset: toAssetView(updated) });
+  } catch (errorValue) {
+    if (errorValue instanceof DuplicateAssetError) {
+      return json(
+        {
+          error: `Replacement skipped. This file already exists as "${errorValue.existingAsset.title}".`,
+          duplicate: true,
+          asset: toAssetView(errorValue.existingAsset),
+        },
+        { status: 409 },
+      );
+    }
+
+    return json({ error: "Failed to replace file." }, { status: 500 });
+  }
 };
