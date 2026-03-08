@@ -6,6 +6,7 @@
   import type { AssetCategory, AssetView } from "$lib/types";
   import AssetCard from "$lib/components/AssetCard.svelte";
   import Button from "$lib/components/Button.svelte";
+  import Dialog from "$lib/components/Dialog.svelte";
   import Input from "$lib/components/Input.svelte";
   import SearchField from "$lib/components/SearchField.svelte";
   import UploadProgressPopup from "$lib/components/UploadProgressPopup.svelte";
@@ -84,9 +85,8 @@
   let aiSettingsOpen = false;
   let aiSaving = false;
   let uploadInputEl: HTMLInputElement | null = null;
-  let editDialogEl: HTMLDialogElement | null = null;
-  let aiDialogEl: HTMLDialogElement | null = null;
-  const DIALOG_CLOSE_ANIMATION_MS = 160;
+  let editDialogRef: { requestClose: () => void } | null = null;
+  let aiDialogRef: { requestClose: () => void } | null = null;
   let aiConfig = {
     enabled: false,
     baseUrl: "http://127.0.0.1:1234",
@@ -674,37 +674,20 @@
     void saveMetadata(editingAssetId);
   }
 
-  function animateDialogClose(
-    dialog: HTMLDialogElement | null,
-    onComplete: () => void,
-  ): void {
-    if (!dialog || !dialog.open) {
-      onComplete();
-      return;
-    }
-
-    if (dialog.classList.contains("is-closing")) {
-      return;
-    }
-
-    dialog.classList.add("is-closing");
-    globalThis.setTimeout(() => {
-      dialog.classList.remove("is-closing");
-      if (dialog.open) {
-        dialog.close();
-      }
-      onComplete();
-    }, DIALOG_CLOSE_ANIMATION_MS);
-  }
-
   function closeEditDialog(): void {
-    animateDialogClose(editDialogEl, cancelEdit);
+    if (editDialogRef) {
+      editDialogRef.requestClose();
+      return;
+    }
+    cancelEdit();
   }
 
   function closeAiDialog(): void {
-    animateDialogClose(aiDialogEl, () => {
-      aiSettingsOpen = false;
-    });
+    if (aiDialogRef) {
+      aiDialogRef.requestClose();
+      return;
+    }
+    aiSettingsOpen = false;
   }
 
   function onWindowKeyDown(event: KeyboardEvent): void {
@@ -812,21 +795,6 @@
     const kb = bytes / 1024;
     if (kb < 1024) return `${kb.toFixed(1)} KB`;
     return `${(kb / 1024).toFixed(2)} MB`;
-  }
-
-  function openAsModal(dialog: HTMLDialogElement): { destroy: () => void } {
-    dialog.classList.remove("is-closing");
-    if (!dialog.open) {
-      dialog.showModal();
-    }
-
-    return {
-      destroy: () => {
-        if (dialog.open) {
-          dialog.close();
-        }
-      },
-    };
   }
 
   onMount(loadAssets);
@@ -1093,19 +1061,12 @@
   </section>
 
   {#if editingAssetId}
-    <dialog
-      bind:this={editDialogEl}
-      class="assetlib-modal assetlib-glass"
-      use:openAsModal
-      aria-label="Edit asset metadata"
-      on:cancel|preventDefault={closeEditDialog}
-      on:click={(event) => {
-        if (event.target === event.currentTarget) {
-          closeEditDialog();
-        }
-      }}
+    <Dialog
+      bind:this={editDialogRef}
+      ariaLabel="Edit asset metadata"
+      title="Edit Metadata"
+      onClose={cancelEdit}
     >
-      <h2>Edit Metadata</h2>
       <label class="assetlib-modal-label">
         <span>Title</span>
         <Input bind:value={editTitle} minlength={2} maxlength={120} />
@@ -1253,7 +1214,7 @@
         </div>
       </label>
 
-      <div class="assetlib-modal-actions">
+      {#snippet actions()}
         <Button
           variant="delete"
           disabled={saveInProgress || deletingAssetId === editingAssetId}
@@ -1273,24 +1234,19 @@
           {saveInProgress ? "Saving..." : "Save"}
         </Button>
         <Button onclick={closeEditDialog}>Cancel</Button>
-      </div>
-    </dialog>
+      {/snippet}
+    </Dialog>
   {/if}
 
   {#if aiSettingsOpen}
-    <dialog
-      bind:this={aiDialogEl}
-      class="assetlib-modal assetlib-glass"
-      use:openAsModal
-      aria-label="AI connection settings"
-      on:cancel|preventDefault={closeAiDialog}
-      on:click={(event) => {
-        if (event.target === event.currentTarget) {
-          closeAiDialog();
-        }
+    <Dialog
+      bind:this={aiDialogRef}
+      ariaLabel="AI connection settings"
+      title="AI Auto Metadata"
+      onClose={() => {
+        aiSettingsOpen = false;
       }}
     >
-      <h2>AI Auto Metadata</h2>
       <p class="assetlib-muted">
         Connect an OpenAI-compatible endpoint to auto-generate tags and a short
         description on upload.
@@ -1343,12 +1299,12 @@
         ></textarea>
       </label>
 
-      <div class="assetlib-modal-actions">
+      {#snippet actions()}
         <Button variant="emphasized" onclick={saveAiConfig} disabled={aiSaving}>
           {aiSaving ? "Saving..." : "Save"}
         </Button>
         <Button onclick={closeAiDialog}>Cancel</Button>
-      </div>
-    </dialog>
+      {/snippet}
+    </Dialog>
   {/if}
 </main>
