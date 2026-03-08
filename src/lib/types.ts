@@ -18,6 +18,7 @@ export interface AssetRecord {
   uploadDate: string;
   originalName: string;
   storedName: string;
+  hash?: string;
   mimeType: string;
   size: number;
   category: AssetCategory;

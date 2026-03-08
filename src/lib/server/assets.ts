@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { TextDecoder } from "node:util";
 import type {
   AssetCategory,
@@ -62,6 +62,47 @@ const textDecoder = new TextDecoder();
 
 const DEFAULT_LICENSE = "Unknown";
 
+export class DuplicateAssetError extends Error {
+  existingAsset: AssetRecord;
+
+  constructor(existingAsset: AssetRecord) {
+    super("Duplicate asset detected.");
+    this.name = "DuplicateAssetError";
+    this.existingAsset = existingAsset;
+  }
+}
+
+function computeAssetHash(bytes: Uint8Array | Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+async function ensureAssetHashes(
+  records: AssetRecord[],
+): Promise<{ records: AssetRecord[]; updated: boolean }> {
+  let updated = false;
+
+  const withHashes = await Promise.all(
+    records.map(async (record) => {
+      if (typeof record.hash === "string" && record.hash.trim()) {
+        return { ...record, hash: record.hash.trim() };
+      }
+
+      try {
+        const fileBytes = await readFile(path.join(uploadsDir, record.storedName));
+        updated = true;
+        return {
+          ...record,
+          hash: computeAssetHash(fileBytes),
+        };
+      } catch {
+        return record;
+      }
+    }),
+  );
+
+  return { records: withHashes, updated };
+}
+
 async function ensureStorage(): Promise<void> {
   await mkdir(uploadsDir, { recursive: true });
   try {
@@ -111,6 +152,10 @@ export async function readAssets(): Promise<AssetRecord[]> {
   const parsed = JSON.parse(raw) as AssetRecord[];
   const normalized = parsed.map((record) => ({
     ...record,
+    hash:
+      typeof record.hash === "string" && record.hash.trim()
+        ? record.hash.trim()
+        : undefined,
     description:
       typeof record.description === "string" ? record.description.trim() : "",
     sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
@@ -163,6 +208,19 @@ export async function saveAsset(params: {
 }): Promise<AssetRecord> {
   await ensureStorage();
   const records = await readAssets();
+  const incomingHash = computeAssetHash(params.bytes);
+  const { records: recordsWithHashes, updated } = await ensureAssetHashes(records);
+  if (updated) {
+    await writeAssets(recordsWithHashes);
+  }
+
+  const duplicate = recordsWithHashes.find(
+    (record) => record.hash === incomingHash,
+  );
+  if (duplicate) {
+    throw new DuplicateAssetError(duplicate);
+  }
+
   const id = randomUUID();
   const ext = path.extname(params.fileName);
   const storedName = `${id}${ext}`;
@@ -237,6 +295,7 @@ export async function saveAsset(params: {
     uploadDate: new Date().toISOString(),
     originalName: params.fileName,
     storedName,
+    hash: incomingHash,
     mimeType: params.mimeType || "application/octet-stream",
     size: params.size,
     category,
@@ -245,8 +304,8 @@ export async function saveAsset(params: {
     height,
   };
 
-  records.unshift(record);
-  await writeAssets(records);
+  recordsWithHashes.unshift(record);
+  await writeAssets(recordsWithHashes);
   return record;
 }
 

@@ -51,6 +51,7 @@
   let assets: AssetView[] = [];
   let loading = true;
   let errorMessage = "";
+  let warningMessage = "";
   let successMessage = "";
 
   let isDragging = false;
@@ -398,7 +399,7 @@
       };
 
       xhr.onload = () => {
-        let payload: { error?: string } = {};
+        let payload: { error?: string; duplicate?: boolean } = {};
         if (xhr.responseText) {
           try {
             payload = JSON.parse(xhr.responseText) as { error?: string };
@@ -443,9 +444,14 @@
         uploadHasEverSucceeded = true;
       } catch (error) {
         uploadFailedCount += 1;
-        errorMessage =
+        const message =
           error instanceof Error ? error.message : "Upload failed.";
-        uploadLastError = errorMessage;
+        if (message.toLowerCase().includes("duplicate")) {
+          warningMessage = message;
+        } else {
+          errorMessage = message;
+        }
+        uploadLastError = message;
       } finally {
         uploadProcessedCount += 1;
         if (uploadSucceededCount > 0) {
@@ -879,6 +885,11 @@
   $: if (errorMessage) {
     toast.error(errorMessage);
     errorMessage = "";
+  }
+
+  $: if (warningMessage) {
+    toast.warning(warningMessage);
+    warningMessage = "";
   }
 
   $: if (successMessage) {

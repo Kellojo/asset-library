@@ -1,5 +1,10 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { readAssets, saveAsset, toAssetView } from "$lib/server/assets";
+import {
+  DuplicateAssetError,
+  readAssets,
+  saveAsset,
+  toAssetView,
+} from "$lib/server/assets";
 
 function parseTags(input: string): string[] {
   return input
@@ -39,17 +44,33 @@ export const POST: RequestHandler = async ({ request }) => {
   const sourceUrl =
     typeof sourceUrlValue === "string" ? sourceUrlValue.trim() : "";
 
-  const record = await saveAsset({
-    title: titleValue.trim(),
-    description,
-    tags,
-    licenses,
-    sourceUrl,
-    fileName: fileValue.name,
-    mimeType: fileValue.type,
-    size: fileValue.size,
-    bytes: new Uint8Array(arrayBuffer),
-  });
+  let record;
+  try {
+    record = await saveAsset({
+      title: titleValue.trim(),
+      description,
+      tags,
+      licenses,
+      sourceUrl,
+      fileName: fileValue.name,
+      mimeType: fileValue.type,
+      size: fileValue.size,
+      bytes: new Uint8Array(arrayBuffer),
+    });
+  } catch (error) {
+    if (error instanceof DuplicateAssetError) {
+      return json(
+        {
+          error: `Duplicate upload skipped. Matching asset already exists: "${error.existingAsset.title}".`,
+          duplicate: true,
+          asset: toAssetView(error.existingAsset),
+        },
+        { status: 409 },
+      );
+    }
+
+    return json({ error: "Failed to save asset." }, { status: 500 });
+  }
 
   return json({ asset: toAssetView(record) }, { status: 201 });
 };
