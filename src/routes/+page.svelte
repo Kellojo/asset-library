@@ -1287,7 +1287,7 @@
 
       <label class="assetlib-modal-label">
         <span>Base URL</span>
-        <input
+        <Input
           bind:value={lmConfig.baseUrl}
           placeholder="http://127.0.0.1:1234"
         />
@@ -1295,12 +1295,12 @@
 
       <label class="assetlib-modal-label">
         <span>Model</span>
-        <input bind:value={lmConfig.model} placeholder="qwen2.5-7b-instruct" />
+        <Input bind:value={lmConfig.model} placeholder="qwen2.5-7b-instruct" />
       </label>
 
       <label class="assetlib-modal-label">
         <span>API Key (optional)</span>
-        <input
+        <Input
           bind:value={lmConfig.apiKey}
           placeholder="leave empty for local dev"
         />
@@ -1308,7 +1308,7 @@
 
       <label class="assetlib-modal-label">
         <span>Timeout (ms)</span>
-        <input
+        <Input
           type="number"
           min="1000"
           step="500"

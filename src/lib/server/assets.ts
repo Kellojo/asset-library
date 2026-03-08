@@ -48,7 +48,16 @@ const shaderExtensions = new Set([
   ".hlsl",
   ".shader",
 ]);
-const scriptExtensions = new Set([".js", ".ts", ".py", ".lua", ".json", ".cs"]);
+const scriptExtensions = new Set([
+  ".js",
+  ".ts",
+  ".py",
+  ".lua",
+  ".json",
+  ".cs",
+  ".cpp",
+  ".h",
+]);
 const textDecoder = new TextDecoder();
 
 const DEFAULT_LICENSE = "Unknown";
@@ -195,6 +204,13 @@ export async function saveAsset(params: {
     mimeType: params.mimeType || "application/octet-stream",
     existingTags: params.tags,
     textSnippet,
+    imageFile:
+      category === "texture"
+        ? {
+            mimeType: params.mimeType || "application/octet-stream",
+            bytes: params.bytes,
+          }
+        : undefined,
   });
 
   await writeFile(path.join(uploadsDir, storedName), params.bytes);

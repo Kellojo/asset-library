@@ -124,6 +124,10 @@ export async function generateAutoTags(params: {
   mimeType: string;
   existingTags: string[];
   textSnippet?: string;
+  imageFile?: {
+    mimeType: string;
+    bytes: Uint8Array;
+  };
 }): Promise<string[]> {
   const config = await getLmStudioConfig();
   if (!config.enabled || !config.baseUrl || !config.model) {
@@ -138,6 +142,7 @@ export async function generateAutoTags(params: {
     `file_name: ${params.originalName}`,
     `category: ${params.category}`,
     `mime_type: ${params.mimeType}`,
+    `existing_tags: ${params.existingTags.join(", ") || "(none)"}`,
     params.textSnippet
       ? `text_sample: ${params.textSnippet.slice(0, 500)}`
       : "",
@@ -147,6 +152,27 @@ export async function generateAutoTags(params: {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const canAttachImage =
+    !!params.imageFile &&
+    params.imageFile.bytes.length > 0 &&
+    params.imageFile.bytes.length <= MAX_IMAGE_BYTES &&
+    params.imageFile.mimeType.startsWith("image/");
+
+  const userContent = canAttachImage
+    ? [
+        { type: "text", text: prompt },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${params.imageFile!.mimeType};base64,${Buffer.from(
+              params.imageFile!.bytes,
+            ).toString("base64")}`,
+          },
+        },
+      ]
+    : prompt;
 
   try {
     const response = await fetch(
@@ -168,7 +194,7 @@ export async function generateAutoTags(params: {
               content:
                 "You create short tagging vocabularies for digital assets. Output comma-separated tags only.",
             },
-            { role: "user", content: prompt },
+            { role: "user", content: userContent },
           ],
         }),
         signal: controller.signal,

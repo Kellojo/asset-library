@@ -123,9 +123,8 @@
     border-radius: 999px;
     border: 1px solid var(--border-2);
     padding: 0.1rem 0.35rem;
-    line-height: 1.1;
     text-align: center;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     background: var(--surface-inset);
   }
 
