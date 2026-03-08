@@ -333,21 +333,22 @@ export async function saveAsset(params: {
 
   await writeFile(path.join(uploadsDir, storedName), params.bytes);
 
+  const normalizedLicenses = (params.licenses ?? [])
+    .map((license) => license.trim())
+    .filter(Boolean);
+  const normalizedSourceUrl = params.sourceUrl?.trim() ?? "";
+  const hasInitialMetadata =
+    normalizedSourceUrl.length > 0 || normalizedLicenses.length > 0;
+
   const record: AssetRecord = {
     id,
     title: params.title,
     description: autoMetadata.description,
     tags: autoMetadata.tags,
-    licenses: (() => {
-      const normalizedLicenses = (params.licenses ?? [])
-        .map((license) => license.trim())
-        .filter(Boolean);
-      return normalizedLicenses.length > 0
-        ? normalizedLicenses
-        : [DEFAULT_LICENSE];
-    })(),
-    sourceUrl: params.sourceUrl?.trim() ?? "",
-    metadataEdited: false,
+    licenses:
+      normalizedLicenses.length > 0 ? normalizedLicenses : [DEFAULT_LICENSE],
+    sourceUrl: normalizedSourceUrl,
+    metadataEdited: hasInitialMetadata,
     uploadDate: new Date().toISOString(),
     originalName: params.fileName,
     storedName,
