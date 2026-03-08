@@ -184,6 +184,16 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
+    --scrollbar-thumb: color-mix(
+      in hsl,
+      var(--app-text-muted) 55%,
+      transparent 45%
+    );
+    --scrollbar-track: transparent;
+  }
+
+  :global(:root[data-theme="light"]) .pane {
+    --scrollbar-track: hsl(0 0% 100% / 0.35);
   }
 
   .pane::-webkit-scrollbar {
@@ -194,6 +204,7 @@
   .pane:hover,
   .pane:focus-within {
     scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 
   .pane:hover::-webkit-scrollbar,
@@ -204,7 +215,13 @@
 
   .pane:hover::-webkit-scrollbar-thumb,
   .pane:focus-within::-webkit-scrollbar-thumb {
-    background: color-mix(in hsl, var(--app-text-muted) 55%, transparent 45%);
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+  }
+
+  .pane:hover::-webkit-scrollbar-track,
+  .pane:focus-within::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
     border-radius: 999px;
   }
 

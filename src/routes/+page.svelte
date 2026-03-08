@@ -1117,7 +1117,7 @@
       </div>
       <h1>Asset Library</h1>
       <div class="assetlib-title-stats">
-        <span>Total {assets.length}</span>
+        <span>{assets.length}</span>
         {#if queueRunning}<span class="active">Uploading</span>{/if}
       </div>
     </div>
