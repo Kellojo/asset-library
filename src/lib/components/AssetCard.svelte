@@ -43,7 +43,12 @@
       </div>
     {:else if asset.previewKind === "image"}
       <div class="assetlib-image-wrap">
-        <img src={asset.fileUrl} alt={asset.title} loading="lazy" />
+        <img
+          src={asset.fileUrl}
+          alt={asset.title}
+          loading="lazy"
+          draggable="false"
+        />
         {#if asset.width && asset.height}
           <div class="assetlib-additionalInfo" aria-hidden="true">
             {asset.width}×{asset.height}
