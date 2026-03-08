@@ -5,6 +5,7 @@
   import { onMount } from "svelte";
   import { replaceState } from "$app/navigation";
   import { browser } from "$app/environment";
+  import { env as publicEnv } from "$env/dynamic/public";
   import type { AssetCategory, AssetView } from "$lib/types";
   import AssetCard from "$lib/components/AssetCard.svelte";
   import Button from "$lib/components/Button.svelte";
@@ -43,6 +44,8 @@
   type SortMode = (typeof SORT_MODE_OPTIONS)[number]["value"];
   const DEFAULT_SORT_MODE: SortMode = "best-match";
   const THEME_STORAGE_KEY = "asset-library-theme";
+  const DEFAULT_UPLOAD_PARALLELISM = 4;
+  const MAX_UPLOAD_PARALLELISM = 16;
   type ThemeMode = "light" | "dark";
 
   const categoryOrder: AssetCategory[] = [
@@ -130,9 +133,20 @@
   };
   const api = new AssetLibraryApiService();
   const sourceLicensePrefillHelper = new SourceLicensePrefillHelper();
+  const uploadParallelism = parseUploadParallelism(
+    publicEnv.PUBLIC_UPLOAD_PARALLELISM,
+  );
   const textPreviews: Record<string, string> = {};
   let fuzzyMatchedAssetIds: Set<string> | null = null;
   let fuzzyRankByAssetId: Map<string, number> | null = null;
+
+  function parseUploadParallelism(rawValue: string | undefined): number {
+    const parsed = Number.parseInt(rawValue ?? "", 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return DEFAULT_UPLOAD_PARALLELISM;
+    }
+    return Math.min(parsed, MAX_UPLOAD_PARALLELISM);
+  }
 
   $: normalizedSearchQuery = searchQuery.trim();
   $: {
@@ -551,24 +565,30 @@
     queueRunning = true;
 
     let uploadedCount = 0;
-    while (uploadQueue.length > 0) {
-      const nextUpload = uploadQueue[0];
-      uploadQueue = uploadQueue.slice(1);
-      try {
-        await uploadSingleFile(nextUpload);
-        uploadedCount += 1;
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Upload failed.";
-        if (message.toLowerCase().includes("duplicate")) {
-          toast.warning(message);
-        } else {
-          toast.error(message);
+    const worker = async (): Promise<void> => {
+      while (uploadQueue.length > 0) {
+        const nextUpload = uploadQueue[0];
+        uploadQueue = uploadQueue.slice(1);
+
+        try {
+          await uploadSingleFile(nextUpload);
+          uploadedCount += 1;
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Upload failed.";
+          if (message.toLowerCase().includes("duplicate")) {
+            toast.warning(message);
+          } else {
+            toast.error(message);
+          }
+        } finally {
+          uploadProcessedCount += 1;
         }
-      } finally {
-        uploadProcessedCount += 1;
       }
-    }
+    };
+
+    const workerCount = Math.min(uploadParallelism, uploadQueue.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
     queueRunning = false;
     if (uploadedCount > 0) {

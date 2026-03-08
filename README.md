@@ -40,6 +40,7 @@ services:
     image: ghcr.io/kellojo/asset-library:latest
     environment:
       - ORIGIN=http://localhost:3000 # Adjust if using a domain or reverse proxy
+      - PUBLIC_UPLOAD_PARALLELISM=4 # Number of files uploaded in parallel from the UI (default: 4)
     ports:
       - "3000:3000"
     volumes:
@@ -56,6 +57,8 @@ docker-compose up -d
 The app will be available on port 3000, ready to accept your uploads!
 
 `BODY_SIZE_LIMIT` controls the maximum upload/request size for the app. The default is set to 1GB, which should be sufficient for most assets. You can adjust this via an environment variable if you need to allow larger or smaller uploads. To do so set the `BODY_SIZE_LIMIT` environment variable in your `docker-compose.yml`.
+
+`PUBLIC_UPLOAD_PARALLELISM` controls how many files are uploaded in parallel by the UI upload queue. The default is `4` (parallel uploads). Set it to a higher value to process multiple files at once.
 
 Please run this behind a reverse proxy and do not expose this directly on the internet without proper authentication!
 
