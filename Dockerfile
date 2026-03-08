@@ -16,6 +16,7 @@ FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV BODY_SIZE_LIMIT=1G
 
 # Copy only production deps
 COPY package.json package-lock.json ./
