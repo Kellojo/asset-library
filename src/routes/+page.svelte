@@ -14,6 +14,7 @@
   import SearchField from "$lib/components/SearchField.svelte";
   import SelectField from "$lib/components/SelectField.svelte";
   import TagPicker from "$lib/components/TagPicker.svelte";
+  import TitleIconReel from "$lib/components/TitleIconReel.svelte";
   import {
     AssetLibraryApiService,
     type AiConfig,
@@ -931,26 +932,10 @@
 
   <header class="assetlib-glass assetlib-topbar">
     <div class="assetlib-title-wrap">
-      <div class="assetlib-title-icon-reel" aria-hidden="true">
-        <div class="assetlib-title-icon-track">
-          {#each categoryOrder as category}
-            <span class="assetlib-title-icon-cell">
-              <Icon
-                icon={categoryIconByType[category]}
-                width="1.15rem"
-                height="1.15rem"
-              />
-            </span>
-          {/each}
-          <span class="assetlib-title-icon-cell">
-            <Icon
-              icon={categoryIconByType[categoryOrder[0]]}
-              width="1.15rem"
-              height="1.15rem"
-            />
-          </span>
-        </div>
-      </div>
+      <TitleIconReel
+        categories={categoryOrder}
+        iconByCategory={categoryIconByType}
+      />
       <h1>Asset Library</h1>
       <div class="assetlib-title-stats">
         <span>{assets.length}</span>

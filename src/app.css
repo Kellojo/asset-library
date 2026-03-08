@@ -237,71 +237,8 @@ body {
   align-items: center;
   gap: 0.45rem;
 }
-.assetlib-title-icon-reel {
-  position: relative;
-  width: 1.7rem;
-  height: 1.7rem;
-  overflow: hidden;
-}
-
-.assetlib-title-icon-reel::before,
-.assetlib-title-icon-reel::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 0.38rem;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.assetlib-title-icon-reel::before {
-  top: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--backgroundLight), transparent 12%) 0%,
-    transparent 100%
-  );
-}
-
-.assetlib-title-icon-reel::after {
-  bottom: 0;
-  background: linear-gradient(
-    0deg,
-    color-mix(in oklab, var(--backgroundLight), transparent 12%) 0%,
-    transparent 100%
-  );
-}
-
-.assetlib-title-icon-track {
-  display: grid;
-  grid-auto-rows: 1.7rem;
-  animation: assetlib-title-icon-scroll 7.8s linear infinite;
-}
-
-.assetlib-title-icon-cell {
-  width: 1.7rem;
-  height: 1.7rem;
-  display: grid;
-  place-items: center;
-  color: var(--app-text);
-}
-
-@keyframes assetlib-title-icon-scroll {
-  from {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(-10.2rem);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .assetlib-title-icon-track {
-    animation: none;
-  }
-
   .assetlib-upload-indicator,
   .assetlib-upload-indicator::after,
   .assetlib-upload-indicator-dot {
