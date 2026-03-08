@@ -44,6 +44,9 @@ The app will be available on port 3000, ready to accept your uploads!
 
 Please run this behind a reverse proxy and do not expose this directly on the internet without proper authentication!
 
+In case you obsere failing requests when uploading large files, make sure that your reverse proxy allows uploading files of that size.
+
+
 # 🗄️ Storage Layout
 
 At runtime the app creates a `data/` directory in the project root:
