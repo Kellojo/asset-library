@@ -108,6 +108,24 @@
   </div>
 
   <div class="assetlib-actions">
+    {#if asset.sourceUrl?.trim()}
+      <Button
+        onclick={() => {
+          globalThis.open(asset.sourceUrl, "_blank", "noopener,noreferrer");
+        }}
+        ariaLabel="Open source link"
+        title="Open source link"
+        iconOnly={true}
+      >
+        <Icon
+          icon="mdi:open-in-new"
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+      </Button>
+    {/if}
+
     <Button
       onclick={() => onEdit(asset)}
       ariaLabel="Edit metadata"
@@ -262,8 +280,8 @@
 
   .assetlib-additionalInfo {
     position: absolute;
-    bottom: 0.5rem;
-    left: 0.5rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
     z-index: 4;
     padding: 0.25rem 0.45rem;
     border-radius: 8px;
