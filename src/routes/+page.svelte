@@ -60,6 +60,11 @@
     "All Rights Reserved",
     "Unity Asset Store EULA",
   ];
+  type QueuedUpload = {
+    file: File;
+    sourceUrl: string;
+    licenses: string[];
+  };
 
   let assets: AssetView[] = [];
   let loading = true;
@@ -83,7 +88,7 @@
   let saveInProgress = false;
   let replaceInProgress = false;
 
-  let uploadQueue: File[] = [];
+  let uploadQueue: QueuedUpload[] = [];
   let queueRunning = false;
   let uploadPopupOpen = false;
   let uploadBatchTotal = 0;
@@ -94,6 +99,13 @@
   let uploadCurrentFileName = "";
   let uploadCurrentFileProgress = 0;
   let uploadLastError = "";
+  let importPrefillOpen = false;
+  let importPrefillSourceUrl = "";
+  let importPrefillLicenses: string[] = [];
+  let importPrefillLicenseQuery = "";
+  let importPrefillLicenseDropdownOpen = false;
+  let pendingImportFiles: File[] = [];
+  let importPrefillDialogRef: { requestClose: () => void } | null = null;
 
   let searchQuery = "";
   let showTodoOnly = false;
@@ -287,6 +299,29 @@
     !allKnownLicenses.some(
       (license) => license.toLowerCase() === licenseQuery.trim().toLowerCase(),
     );
+  $: normalizedImportPrefillLicenseQuery = importPrefillLicenseQuery
+    .trim()
+    .toLowerCase();
+  $: matchingImportPrefillLicenseOptions = allKnownLicenses.filter(
+    (license) =>
+      !importPrefillLicenses.some(
+        (selected) => selected.toLowerCase() === license.toLowerCase(),
+      ) &&
+      (!normalizedImportPrefillLicenseQuery ||
+        license.toLowerCase().includes(normalizedImportPrefillLicenseQuery)),
+  );
+  $: canCreateImportPrefillLicense =
+    importPrefillLicenseQuery.trim().length > 0 &&
+    !importPrefillLicenses.some(
+      (license) =>
+        license.toLowerCase() ===
+        importPrefillLicenseQuery.trim().toLowerCase(),
+    ) &&
+    !allKnownLicenses.some(
+      (license) =>
+        license.toLowerCase() ===
+        importPrefillLicenseQuery.trim().toLowerCase(),
+    );
   $: uploadPendingCount = Math.max(0, uploadBatchTotal - uploadProcessedCount);
   $: uploadOverallUnits =
     uploadProcessedCount +
@@ -431,6 +466,42 @@
 
   function queueFiles(files: File[]): void {
     if (!files.length) return;
+    importPrefillSourceUrl = "";
+    importPrefillLicenses = [];
+    importPrefillLicenseQuery = "";
+    importPrefillLicenseDropdownOpen = false;
+    pendingImportFiles = files;
+    importPrefillOpen = true;
+  }
+
+  function cancelImportPrefill(): void {
+    importPrefillOpen = false;
+    pendingImportFiles = [];
+    importPrefillSourceUrl = "";
+    importPrefillLicenses = [];
+    importPrefillLicenseQuery = "";
+    importPrefillLicenseDropdownOpen = false;
+  }
+
+  function closeImportPrefillDialog(): void {
+    if (importPrefillDialogRef) {
+      importPrefillDialogRef.requestClose();
+      return;
+    }
+    cancelImportPrefill();
+  }
+
+  function queuePendingImports(): void {
+    const files = pendingImportFiles;
+    if (!files.length) return;
+
+    const sourceUrl = importPrefillSourceUrl.trim();
+    const licenses = [...importPrefillLicenses];
+    const queuedUploads = files.map((file) => ({
+      file,
+      sourceUrl,
+      licenses,
+    }));
 
     const queuedBefore = uploadQueue.length;
     if (!queueRunning && queuedBefore === 0) {
@@ -443,19 +514,25 @@
       uploadLastError = "";
     }
 
-    uploadQueue = [...uploadQueue, ...files];
+    uploadQueue = [...uploadQueue, ...queuedUploads];
     uploadBatchTotal += files.length;
     successMessage = `Queued ${files.length} file${files.length === 1 ? "" : "s"} for upload.`;
+
+    pendingImportFiles = [];
+    importPrefillOpen = false;
     void processUploadQueue();
   }
 
   async function uploadSingleFile(
-    file: File,
+    upload: QueuedUpload,
     onProgress: (loadedBytes: number, totalBytes: number) => void,
   ): Promise<void> {
+    const { file, sourceUrl, licenses } = upload;
     const form = new FormData();
     form.set("title", titleFromFileName(file.name));
     form.set("tags", "");
+    form.set("sourceUrl", sourceUrl);
+    form.set("licenses", licenses.join(","));
     form.set("file", file);
 
     await new Promise<void>((resolve, reject) => {
@@ -505,12 +582,12 @@
 
     let uploadedCount = 0;
     while (uploadQueue.length > 0) {
-      const next = uploadQueue[0];
+      const nextUpload = uploadQueue[0];
       uploadQueue = uploadQueue.slice(1);
-      uploadCurrentFileName = next.name;
+      uploadCurrentFileName = nextUpload.file.name;
       uploadCurrentFileProgress = 0;
       try {
-        await uploadSingleFile(next, (loadedBytes, totalBytes) => {
+        await uploadSingleFile(nextUpload, (loadedBytes, totalBytes) => {
           uploadCurrentFileProgress =
             totalBytes > 0
               ? Math.round((loadedBytes / totalBytes) * 100)
@@ -748,6 +825,53 @@
     if (!insideEditTagPicker) {
       tagDropdownOpen = false;
       licenseDropdownOpen = false;
+      importPrefillLicenseDropdownOpen = false;
+    }
+  }
+
+  function addImportPrefillLicense(rawLicense: string): void {
+    const license = rawLicense.trim();
+    if (!license) return;
+
+    const exists = importPrefillLicenses.some(
+      (current) => current.toLowerCase() === license.toLowerCase(),
+    );
+    if (exists) return;
+
+    importPrefillLicenses = [...importPrefillLicenses, license];
+    importPrefillLicenseQuery = "";
+    importPrefillLicenseDropdownOpen = true;
+  }
+
+  function removeImportPrefillLicense(licenseToRemove: string): void {
+    importPrefillLicenses = importPrefillLicenses.filter(
+      (license) => license.toLowerCase() !== licenseToRemove.toLowerCase(),
+    );
+  }
+
+  function onImportPrefillLicenseQueryKeyDown(event: KeyboardEvent): void {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault();
+      const candidate =
+        importPrefillLicenseQuery.trim() ||
+        matchingImportPrefillLicenseOptions[0] ||
+        "";
+      if (candidate) addImportPrefillLicense(candidate);
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !importPrefillLicenseQuery &&
+      importPrefillLicenses.length > 0
+    ) {
+      event.preventDefault();
+      importPrefillLicenses = importPrefillLicenses.slice(0, -1);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      importPrefillLicenseDropdownOpen = false;
     }
   }
 
@@ -1543,6 +1667,101 @@
           {aiSaving ? "Saving..." : "Save"}
         </Button>
         <Button onclick={closeAiDialog}>Cancel</Button>
+      {/snippet}
+    </Dialog>
+  {/if}
+
+  {#if importPrefillOpen}
+    <Dialog
+      bind:this={importPrefillDialogRef}
+      ariaLabel="Bulk import prefills"
+      title="Import Prefills"
+      onClose={cancelImportPrefill}
+    >
+      <p class="assetlib-muted">
+        Apply shared metadata to {pendingImportFiles.length} file{pendingImportFiles.length ===
+        1
+          ? ""
+          : "s"} before queueing upload.
+      </p>
+
+      <label class="assetlib-modal-label">
+        <span>Source URL (optional)</span>
+        <Input
+          bind:value={importPrefillSourceUrl}
+          type="url"
+          placeholder="https://example.com/..."
+        />
+      </label>
+
+      <label class="assetlib-modal-label">
+        <span>Licenses (optional)</span>
+        <div class="assetlib-tag-picker">
+          <div class="assetlib-tag-input-wrap">
+            {#each importPrefillLicenses as license}
+              <span class="assetlib-tag-chip">
+                {license}
+                <button
+                  type="button"
+                  class="assetlib-tag-chip-remove"
+                  on:click={() => removeImportPrefillLicense(license)}
+                  aria-label={`Remove license ${license}`}
+                >
+                  ×
+                </button>
+              </span>
+            {/each}
+            <input
+              bind:value={importPrefillLicenseQuery}
+              placeholder={importPrefillLicenses.length
+                ? "Add another license"
+                : "Add licenses"}
+              on:focus={() => {
+                importPrefillLicenseDropdownOpen = true;
+              }}
+              on:input={() => {
+                importPrefillLicenseDropdownOpen = true;
+              }}
+              on:keydown={onImportPrefillLicenseQueryKeyDown}
+            />
+          </div>
+
+          {#if importPrefillLicenseDropdownOpen && (matchingImportPrefillLicenseOptions.length > 0 || canCreateImportPrefillLicense)}
+            <div
+              class="assetlib-tag-dropdown"
+              role="listbox"
+              aria-label="License suggestions"
+            >
+              {#if canCreateImportPrefillLicense}
+                <button
+                  type="button"
+                  class="assetlib-tag-option assetlib-tag-option-create"
+                  on:click={() =>
+                    addImportPrefillLicense(importPrefillLicenseQuery)}
+                >
+                  Create "{importPrefillLicenseQuery.trim()}"
+                </button>
+              {/if}
+
+              {#each matchingImportPrefillLicenseOptions as option}
+                <button
+                  type="button"
+                  class="assetlib-tag-option"
+                  on:click={() => addImportPrefillLicense(option)}
+                >
+                  {option}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </label>
+
+      {#snippet actions()}
+        <Button variant="emphasized" onclick={queuePendingImports}
+          >Queue Files</Button
+        >
+        <Button onclick={closeImportPrefillDialog}>Cancel</Button>
       {/snippet}
     </Dialog>
   {/if}
