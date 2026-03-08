@@ -1,0 +1,28 @@
+.toast {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+
+  background-color: var(--background);
+  backdrop-filter: blur(2rem);
+  color: var(--primaryText);
+  padding: 1rem;
+  border-radius: 1rem;
+
+  box-shadow: var(--shadow-l);
+  border: 1px solid var(--borderColor);
+}
+
+.toast [data-icon] {
+  display: flex;
+}
+
+.toast[data-type="error"] {
+  color: var(--error);
+}
+
+.toast[data-type="success"] {
+  color: var(--success);
+}

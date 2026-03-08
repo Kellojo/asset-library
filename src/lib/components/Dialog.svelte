@@ -18,12 +18,12 @@
   } = $props();
 
   let dialogEl: HTMLDialogElement | null = null;
-  let backdropPressed = false;
+  let isClosing = $state(false);
 
   function openAsModal(dialog: HTMLDialogElement): { destroy: () => void } {
-    dialog.classList.remove("is-closing");
+    isClosing = false;
     if (!dialog.open) {
-      dialog.showModal();
+      dialog.show();
     }
 
     return {
@@ -41,13 +41,13 @@
       return;
     }
 
-    if (dialogEl.classList.contains("is-closing")) {
+    if (isClosing) {
       return;
     }
 
-    dialogEl.classList.add("is-closing");
+    isClosing = true;
     globalThis.setTimeout(() => {
-      dialogEl?.classList.remove("is-closing");
+      isClosing = false;
       if (dialogEl?.open) {
         dialogEl.close();
       }
@@ -59,28 +59,22 @@
     event.preventDefault();
     requestClose();
   }
-
-  function onDialogMouseDown(event: MouseEvent): void {
-    backdropPressed = event.target === event.currentTarget;
-  }
-
-  function onDialogClick(event: MouseEvent): void {
-    const clickedBackdrop = event.target === event.currentTarget;
-    if (clickedBackdrop && backdropPressed) {
-      requestClose();
-    }
-    backdropPressed = false;
-  }
 </script>
+
+<div
+  class="assetlib-modal-backdrop"
+  class:is-closing={isClosing}
+  aria-hidden="true"
+  onclick={requestClose}
+></div>
 
 <dialog
   bind:this={dialogEl}
   class="assetlib-modal assetlib-glass"
+  class:is-closing={isClosing}
   use:openAsModal
   aria-label={ariaLabel}
   oncancel={onDialogCancel}
-  onmousedown={onDialogMouseDown}
-  onclick={onDialogClick}
 >
   {#if title}
     <h2>{title}</h2>

@@ -1047,12 +1047,7 @@
 <main class="assetlib-shell">
   <Toaster
     position="top-right"
-    richColors={true}
-    closeButton={true}
-    toastOptions={{
-      style:
-        "--normal-bg: var(--surface-2); --normal-bg-hover: color-mix(in hsl, var(--surface-2) 80%, var(--accent) 20%); --normal-border: var(--border-1); --normal-border-hover: var(--border-2); --normal-text: var(--app-text); --success-bg: var(--successSecondary); --success-border: var(--success); --success-text: var(--success); --info-bg: var(--infoSecondary); --info-border: var(--info); --info-text: var(--info); --warning-bg: var(--warningSecondary); --warning-border: var(--warning); --warning-text: var(--warning); --error-bg: var(--errorSecondary); --error-border: var(--error); --error-text: var(--error);",
-    }}
+    toastOptions={{ unstyled: true, class: "toast" }}
   />
 
   {#if isDragging}
