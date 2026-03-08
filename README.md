@@ -1,94 +1,91 @@
-# Asset Library (SvelteKit)
+# 📦 Asset Library (SvelteKit)
 
-A simple self-hosted asset library for your game development needs:
+A simple **self-hosted asset library** for your 🎮 game development needs, available as a simple selfhostable docker container:
 
-- Uploading assets: audio, textures, shaders, scripts, and 3D models
-- Storing metadata: title, tags, upload date, description, license, source
-- Asset previews for 3D models, audio and text/code
-- AI integration, which automatically tags/describes imported files
-- Downloading/Replacing assets
-- Strong filtering and searching functionalities
-  - Filtering by tag, type, ...
-  - Many sorting options
-  - Fuzzy search using Fuse.js
-- File deduplication using hashes
-- File-based storage (no external database needed)
+- ⬆️ Uploading assets: 🔊 audio, 🖼️ textures, ✨ shaders, 📜 scripts, and 🧊 3D models
+- 🗂️ Storing metadata: 🏷️ title, 🔖 tags, 📅 upload date, 📝 description, ⚖️ license, 🔗 source
+- 👀 Asset previews for 🧊 3D models, 🔊 audio and 📄 text/code
+- 🤖 AI integration, which automatically 🏷️ tags/describes imported files
+- ⬇️ Downloading / 🔁 Replacing assets
+- 🔎 Strong filtering and searching functionalities
+  - 🏷️ Filtering by tag, type, ...
+  - ↕️ Many sorting options
+  - 🧠 Fuzzy search using Fuse.js
 
+- 🧬 File deduplication using hashes
+- 📁 File-based storage (no external database needed)
 
-## Storage Layout
+---
+
+## 🚧 Currently not available
+
+- 👤 User accounts / 🔐 permissions
+
+---
+
+# 🗄️ Storage Layout
 
 At runtime the app creates a `data/` directory in the project root:
 
-- `data/assets.json`: metadata database
-- `data/uploads/`: uploaded files
+- 📄 `data/assets.json`: metadata database
+- 📂 `data/uploads/`: uploaded files
 
-This keeps setup very small and easy to back up.
+✨ This keeps setup **very small and easy to back up**.
 
+---
 
+# 🤖 AI Auto Metadata
 
-On Linux/macOS use:
+You can connect **AI metadata generation** from the UI:
 
-```bash
-PORT=8080 npm run start
-```
+1. 🚀 Open the app and click `AI` in the top bar
+2. 🏷️ Enable auto-tagging
+3. 🌐 Set base URL (default `http://127.0.0.1:1234`)
+4. 🧠 Set the model name loaded by your AI endpoint
+5. 💾 Save
 
-## Reverse Proxy (Optional)
-
-Run behind Nginx/Caddy/Traefik for TLS and domain routing. The app itself is just a Node process.
-
-## Notes
-
-- Upload size is limited by your hosting and proxy settings.
-- `model-viewer` previews are available for `.glb` and `.gltf` files.
-- Other model formats are stored/downloadable but may not have an inline 3D preview.
-
-## AI Auto Metadata
-
-You can connect AI metadata generation from the UI:
-
-1. Open the app and click `AI` in the top bar.
-2. Enable auto-tagging.
-3. Set base URL (default `http://127.0.0.1:1234`).
-4. Set the model name loaded by your AI endpoint.
-5. Save.
-
-The app sends upload metadata to your AI endpoint using the OpenAI-compatible API:
+The app sends upload metadata to your AI endpoint using the **OpenAI-compatible API**:
 
 - `POST /v1/chat/completions`
 
-Behavior:
+### ⚙️ Behavior
 
-- Auto-generated tags are merged with existing tags.
-- If the AI endpoint is unavailable or times out, upload still succeeds with existing tags.
+- 🏷️ Auto-generated tags are **merged with existing tags**
+- ⚠️ If the AI endpoint is unavailable or times out, upload **still succeeds** with existing tags
 
-### Configure via .env
+---
 
-You can configure AI metadata via `.env` instead of the UI.
+# ⚙️ Configure via `.env`
 
-Supported variables:
+You can configure **AI metadata** via `.env` instead of the UI.
 
-- `AI_ENABLED` (`true`/`false`)
+### Supported variables
+
+- `AI_ENABLED` (`true` / `false`)
 - `AI_BASE_URL` (e.g. `http://127.0.0.1:1234`)
 - `AI_MODEL` (loaded model name)
-- `AI_API_KEY` (optional)
+- `AI_API_KEY` (optional 🔑)
 - `AI_TIMEOUT_MS` (e.g. `12000`)
-- `AI_CUSTOM_INSTRUCTION` (optional prompt addition)
+- `AI_CUSTOM_INSTRUCTION` (optional prompt addition ✏️)
 
-Notes:
+### 📝 Notes
 
-- Copy `.env.example` to `.env` and fill values.
-- When `AI_*` env vars are present, they override UI-saved settings in `data/ai-config.json`.
+- 📋 Copy `.env.example` to `.env` and fill values
+- 🔁 When `AI_*` env vars are present, they **override UI-saved settings** in `data/ai-config.json`
 
-## Maintenance
+---
 
-- Back up `data/` regularly.
-- To move the library to another server, copy the project and `data/` folder.
-
-## Development
+# 🛠️ Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Then open:
+
+🌐 `http://localhost:5173`
+
+---
+
+If you want, I can also make a **“GitHub-optimized emoji style”** (used by big repos) which is **cleaner and more consistent** with section icons like 📦 ⚙️ 🧠 🗄️.
