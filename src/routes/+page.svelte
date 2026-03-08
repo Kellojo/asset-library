@@ -3,6 +3,7 @@
   import Fuse from "fuse.js";
   import { Toaster, toast } from "svelte-sonner";
   import { onMount } from "svelte";
+  import { replaceState } from "$app/navigation";
   import { browser } from "$app/environment";
   import type { AssetCategory, AssetView } from "$lib/types";
   import AssetCard from "$lib/components/AssetCard.svelte";
@@ -470,7 +471,7 @@
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     const currentUrl = `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`;
     if (nextUrl !== currentUrl) {
-      globalThis.history.replaceState(globalThis.history.state, "", nextUrl);
+      replaceState(nextUrl, globalThis.history.state);
     }
   }
 
