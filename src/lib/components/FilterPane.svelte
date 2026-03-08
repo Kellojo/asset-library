@@ -266,6 +266,7 @@
 
 <style>
   .pane {
+    box-shadow: var(--shadow-m);
     border: 1px solid var(--borderColor);
     background: var(--background);
     border-radius: 12px;
