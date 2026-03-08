@@ -102,8 +102,7 @@ function computeAssetHash(bytes: Uint8Array | Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function ensureAssetHashes(
-): Promise<void> {
+async function ensureAssetHashes(): Promise<void> {
   const database = getDb();
   const rows = database
     .prepare(
@@ -115,7 +114,9 @@ async function ensureAssetHashes(
     return;
   }
 
-  const updateHash = database.prepare("UPDATE assets SET hash = ? WHERE id = ?");
+  const updateHash = database.prepare(
+    "UPDATE assets SET hash = ? WHERE id = ?",
+  );
   for (const row of rows) {
     try {
       const fileBytes = await readFile(path.join(uploadsDir, row.stored_name));
@@ -199,9 +200,7 @@ function normalizeImportedRecord(record: AssetRecord): AssetRecord {
       typeof record.description === "string" ? record.description.trim() : "",
     sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
     licenses:
-      normalizedLicenses.length > 0
-        ? normalizedLicenses
-        : [DEFAULT_LICENSE],
+      normalizedLicenses.length > 0 ? normalizedLicenses : [DEFAULT_LICENSE],
     metadataEdited: record.metadataEdited ?? true,
     previewKind: getPreviewKind(
       record.category,
@@ -321,7 +320,9 @@ function insertRecord(database: DatabaseSync, record: AssetRecord): void {
     });
 }
 
-async function migrateLegacyJsonIfNeeded(database: DatabaseSync): Promise<void> {
+async function migrateLegacyJsonIfNeeded(
+  database: DatabaseSync,
+): Promise<void> {
   const countResult = database
     .prepare("SELECT COUNT(*) AS count FROM assets")
     .get() as { count: number };
