@@ -69,6 +69,7 @@ export const POST: RequestHandler = async ({ request }) => {
       );
     }
 
+    console.error("Error saving asset:", error);
     return json({ error: "Failed to save asset." }, { status: 500 });
   }
 
