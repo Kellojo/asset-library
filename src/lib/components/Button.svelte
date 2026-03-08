@@ -93,7 +93,7 @@
   }
 
   .assetlib-btn-standard {
-    background: var(--surface-2);
+    background: var(--backgroundLight);
     color: var(--app-text);
     border: 1px solid var(--borderColor);
   }

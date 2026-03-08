@@ -247,7 +247,7 @@
     border-radius: 12px;
     overflow: hidden;
     background: var(--canvas-bg);
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
   }
 
   canvas {

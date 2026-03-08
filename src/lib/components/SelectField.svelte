@@ -66,9 +66,9 @@
   select {
     width: 100%;
     min-width: var(--select-min-width, 13rem);
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     border-radius: 10px;
-    background: var(--surface-2);
+    background: var(--backgroundLight);
     color: var(--app-text);
     font: inherit;
     line-height: 1.2;

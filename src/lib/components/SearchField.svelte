@@ -23,7 +23,7 @@
     align-items: center;
     gap: 0.25rem;
     border-radius: 10px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     padding: 0.5rem;
     background: var(--surface-inset);
   }

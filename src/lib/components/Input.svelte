@@ -42,7 +42,7 @@
     display: flex;
     align-items: center;
     border-radius: 10px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     padding: 0.5rem;
     background: var(--surface-inset);
   }

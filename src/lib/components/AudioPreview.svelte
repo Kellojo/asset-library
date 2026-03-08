@@ -180,9 +180,9 @@
 
   .assetlib-audio-toggle {
     min-width: 5.5rem;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     border-radius: 12px;
-    background: color-mix(in oklab, var(--surface-2), black 8%);
+    background: color-mix(in oklab, var(--backgroundLight), black 8%);
     color: var(--text-main);
     font-weight: 600;
     padding: 0.45rem 0.85rem;

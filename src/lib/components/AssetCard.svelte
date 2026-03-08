@@ -151,8 +151,12 @@
     position: relative;
     min-height: 300px;
     border-radius: 12px;
-    background: linear-gradient(145deg, var(--surface-1), var(--surface-2));
-    border: 1px solid var(--border-1);
+    background: linear-gradient(
+      145deg,
+      var(--background),
+      var(--backgroundLight)
+    );
+    border: 1px solid var(--borderColor);
     box-shadow: var(--shadow-m);
     overflow: hidden;
   }
@@ -222,7 +226,7 @@
     font-size: 0.625rem;
     padding: 0.25rem 0.5rem;
     border-radius: 999px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
   }
 
   .assetlib-type-badge {
@@ -233,7 +237,7 @@
     align-items: center;
     justify-content: center;
     color: var(--app-text);
-    background: var(--surface-2);
+    background: var(--backgroundLight);
   }
 
   .assetlib-todo-badge {
@@ -319,8 +323,8 @@
     margin: 0;
     padding: 0.5rem;
     border-radius: 10px;
-    border: 1px solid var(--border-2);
-    background: var(--surface-2);
+    border: 1px solid var(--borderHoverColor);
+    background: var(--backgroundLight);
     max-height: 100%;
     overflow: auto;
     white-space: pre-wrap;

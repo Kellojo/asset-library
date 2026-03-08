@@ -207,7 +207,7 @@
     align-items: center;
     gap: 0.25rem;
     border-radius: 10px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     padding: 0.5rem;
     background: var(--surface-inset);
   }
@@ -228,8 +228,8 @@
     align-items: center;
     gap: 0.25rem;
     border-radius: 999px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-2);
+    background: var(--backgroundLight);
+    border: 1px solid var(--borderHoverColor);
     color: var(--app-text);
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
@@ -253,7 +253,7 @@
     display: grid;
     gap: 0.25rem;
     border-radius: 10px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     background: var(--backgroundLightOpaque);
     padding: 0.5rem;
     max-height: 180px;
@@ -274,7 +274,7 @@
 
   .option:hover {
     background: var(--surface-inset);
-    border-color: var(--border-2);
+    border-color: var(--borderHoverColor);
   }
 
   .option-create {

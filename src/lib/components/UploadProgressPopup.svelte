@@ -121,7 +121,7 @@
   .assetlib-upload-progress-badge {
     min-width: 1.25rem;
     border-radius: 999px;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     padding: 0.1rem 0.35rem;
     text-align: center;
     font-size: 0.75rem;
@@ -177,7 +177,7 @@
     height: 0.45rem;
     border-radius: 999px;
     background: var(--surface-inset);
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     overflow: hidden;
   }
 
@@ -196,7 +196,7 @@
   }
 
   .assetlib-upload-progress-stats span {
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--borderHoverColor);
     background: var(--surface-inset);
     border-radius: 8px;
     padding: 0.25rem 0.35rem;
