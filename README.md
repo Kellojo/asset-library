@@ -5,7 +5,7 @@ A simple **self-hosted asset library** for your 🎮 game development needs, ava
 - ⬆️ Uploading assets: 🔊 audio, 🖼️ textures, ✨ shaders, 📜 scripts, and 🧊 3D models
 - 🗂️ Storing metadata: 🏷️ title, 🔖 tags, 📅 upload date, 📝 description, ⚖️ license, 🔗 source
 - 👀 Asset previews for 🧊 3D models, 🔊 audio and 📄 text/code
-- 🤖 AI integration, which automatically 🏷️ tags/describes imported files
+- 🤖 AI integration, which automatically 🏷️ tags/describes imported files (audio, textures, shaders, scripts)
 - ⬇️ Downloading / 🔁 Replacing assets
 - 🔎 Strong filtering and searching functionalities
   - 🏷️ Filtering by tag, type, ...
