@@ -19,6 +19,10 @@
     AssetLibraryApiService,
     type AiConfig,
   } from "$lib/services/asset-library-api";
+  import {
+    SourceLicensePrefillHelper,
+    UNITY_ASSET_STORE_LICENSE,
+  } from "$lib/services/source-license-prefill";
 
   const FILTER_QUERY_KEYS = {
     todo: "todo",
@@ -66,7 +70,7 @@
     "Royalty Free",
     "Editorial Use Only",
     "All Rights Reserved",
-    "Unity Asset Store EULA",
+    UNITY_ASSET_STORE_LICENSE,
   ];
   type QueuedUpload = {
     file: File;
@@ -125,6 +129,7 @@
     customInstruction: "",
   };
   const api = new AssetLibraryApiService();
+  const sourceLicensePrefillHelper = new SourceLicensePrefillHelper();
   const textPreviews: Record<string, string> = {};
   let fuzzyMatchedAssetIds: Set<string> | null = null;
   let fuzzyRankByAssetId: Map<string, number> | null = null;
@@ -302,6 +307,24 @@
     ),
   ).sort((a, b) => a.localeCompare(b));
   $: uploadPendingCount = Math.max(0, uploadBatchTotal - uploadProcessedCount);
+  $: {
+    const suggestedLicenses =
+      sourceLicensePrefillHelper.getPrefillLicensesForSourceUrl(
+        importPrefillSourceUrl,
+      );
+    if (suggestedLicenses.length > 0) {
+      const existingLicenses = new Set(
+        importPrefillLicenses.map((license) => license.trim().toLowerCase()),
+      );
+      const missingLicenses = suggestedLicenses.filter(
+        (license) => !existingLicenses.has(license.toLowerCase()),
+      );
+
+      if (missingLicenses.length > 0) {
+        importPrefillLicenses = [...importPrefillLicenses, ...missingLicenses];
+      }
+    }
+  }
 
   function hasFilePayload(event: DragEvent): boolean {
     const types = event.dataTransfer?.types;
