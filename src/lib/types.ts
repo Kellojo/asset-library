@@ -21,6 +21,8 @@ export interface AssetRecord {
   size: number;
   category: AssetCategory;
   previewKind: AssetPreviewKind;
+  width?: number;
+  height?: number;
 }
 
 export interface AssetView extends AssetRecord {

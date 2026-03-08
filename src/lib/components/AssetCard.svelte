@@ -42,7 +42,14 @@
         <AudioPreview src={asset.fileUrl} title={asset.title} />
       </div>
     {:else if asset.previewKind === "image"}
-      <img src={asset.fileUrl} alt={asset.title} loading="lazy" />
+      <div class="assetlib-image-wrap">
+        <img src={asset.fileUrl} alt={asset.title} loading="lazy" />
+        {#if asset.width && asset.height}
+          <div class="assetlib-additionalInfo" aria-hidden="true">
+            {asset.width}×{asset.height}
+          </div>
+        {/if}
+      </div>
     {:else if asset.previewKind === "model"}
       <ThreeModelPreview
         src={asset.fileUrl}
@@ -241,6 +248,36 @@
     inset: 0;
     z-index: 1;
     background: var(--canvas-bg);
+  }
+
+  .assetlib-image-wrap {
+    position: absolute;
+    inset: 0;
+  }
+
+  .assetlib-additionalInfo {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    z-index: 4;
+    padding: 0.25rem 0.45rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--app-text);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 140ms ease,
+      transform 140ms ease;
+    pointer-events: none;
+  }
+
+  .assetlib-card:hover .assetlib-additionalInfo,
+  .assetlib-card:focus-within .assetlib-additionalInfo {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .assetlib-preview-layer img {

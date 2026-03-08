@@ -161,6 +161,28 @@ export async function saveAsset(params: {
     params.mimeType,
   );
 
+  // Attempt to read image dimensions for textures/images
+  let width: number | undefined;
+  let height: number | undefined;
+  if (previewKind === "image") {
+    try {
+      const { default: sizeOf } = await import("image-size");
+      const dims = sizeOf(Buffer.from(params.bytes));
+      if (
+        dims &&
+        typeof dims.width === "number" &&
+        typeof dims.height === "number"
+      ) {
+        width = dims.width;
+        height = dims.height;
+      }
+    } catch (err) {
+      // Non-fatal: if image-size isn't available or fails, continue without dims
+      // eslint-disable-next-line no-console
+      console.warn("Could not determine image dimensions:", err);
+    }
+  }
+
   const textSnippet =
     previewKind === "text"
       ? textDecoder.decode(params.bytes.slice(0, 4_000))
@@ -198,6 +220,8 @@ export async function saveAsset(params: {
     size: params.size,
     category,
     previewKind,
+    width,
+    height,
   };
 
   records.unshift(record);
