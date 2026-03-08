@@ -7,6 +7,7 @@
   import AssetCard from "$lib/components/AssetCard.svelte";
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
+  import SearchField from "$lib/components/SearchField.svelte";
   import UploadProgressPopup from "$lib/components/UploadProgressPopup.svelte";
 
   const FILTER_QUERY_KEYS = {
@@ -1037,10 +1038,10 @@
 
         <div class="assetlib-filter-section">
           <span class="assetlib-filter-title">Tags</span>
-          <input
+          <SearchField
             bind:value={filterTagQuery}
             placeholder="Filter tags"
-            on:keydown={onFilterTagQueryKeyDown}
+            onkeydown={onFilterTagQueryKeyDown}
           />
           <div class="assetlib-filter-list assetlib-filter-list-scroll">
             {#each filteredTagRows as row}
@@ -1060,7 +1061,7 @@
 
       <div class="assetlib-library-main">
         <div class="assetlib-tools">
-          <input
+          <SearchField
             bind:value={searchQuery}
             placeholder="Search title, description, tag, file, category"
           />
