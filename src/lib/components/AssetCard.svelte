@@ -191,7 +191,7 @@
 
   .assetlib-badges {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
 
   .assetlib-type-badge,

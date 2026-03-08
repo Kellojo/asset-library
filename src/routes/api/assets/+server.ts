@@ -17,6 +17,7 @@ export const POST: RequestHandler = async ({ request }) => {
   const form = await request.formData();
   const titleValue = form.get("title");
   const tagsValue = form.get("tags");
+  const descriptionValue = form.get("description");
   const licensesValue = form.get("licenses");
   const sourceUrlValue = form.get("sourceUrl");
   const fileValue = form.get("file");
@@ -31,6 +32,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const arrayBuffer = await fileValue.arrayBuffer();
   const tags = typeof tagsValue === "string" ? parseTags(tagsValue) : [];
+  const description =
+    typeof descriptionValue === "string" ? descriptionValue.trim() : "";
   const licenses =
     typeof licensesValue === "string" ? parseTags(licensesValue) : [];
   const sourceUrl =
@@ -38,6 +41,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const record = await saveAsset({
     title: titleValue.trim(),
+    description,
     tags,
     licenses,
     sourceUrl,

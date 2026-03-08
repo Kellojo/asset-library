@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "$env/dynamic/private";
 
-export interface LmStudioConfig {
+export interface AiConfig {
   enabled: boolean;
   baseUrl: string;
   model: string;
@@ -11,9 +11,9 @@ export interface LmStudioConfig {
 }
 
 const dataRoot = path.join(process.cwd(), "data");
-const configPath = path.join(dataRoot, "lmstudio.json");
+const configPath = path.join(dataRoot, "ai-config.json");
 
-const defaultConfig: LmStudioConfig = {
+const defaultConfig: AiConfig = {
   enabled: false,
   baseUrl: "http://127.0.0.1:1234",
   model: "",
@@ -36,13 +36,13 @@ function parseEnvNumber(value: string | undefined): number | undefined {
   return Math.max(1_000, parsed);
 }
 
-function applyEnvOverrides(config: LmStudioConfig): LmStudioConfig {
+function applyEnvOverrides(config: AiConfig): AiConfig {
   return {
-    enabled: parseEnvBoolean(env.LMSTUDIO_ENABLED) ?? config.enabled,
-    baseUrl: env.LMSTUDIO_BASE_URL?.trim() || config.baseUrl,
-    model: env.LMSTUDIO_MODEL?.trim() || config.model,
-    apiKey: env.LMSTUDIO_API_KEY ?? config.apiKey,
-    timeoutMs: parseEnvNumber(env.LMSTUDIO_TIMEOUT_MS) ?? config.timeoutMs,
+    enabled: parseEnvBoolean(env.AI_ENABLED) ?? config.enabled,
+    baseUrl: env.AI_BASE_URL?.trim() || config.baseUrl,
+    model: env.AI_MODEL?.trim() || config.model,
+    apiKey: env.AI_API_KEY ?? config.apiKey,
+    timeoutMs: parseEnvNumber(env.AI_TIMEOUT_MS) ?? config.timeoutMs,
   };
 }
 
@@ -55,12 +55,12 @@ async function ensureConfigFile(): Promise<void> {
   }
 }
 
-export async function getLmStudioConfig(): Promise<LmStudioConfig> {
+export async function getAiConfig(): Promise<AiConfig> {
   await ensureConfigFile();
   const raw = await readFile(configPath, "utf8");
-  const parsed = JSON.parse(raw) as Partial<LmStudioConfig>;
+  const parsed = JSON.parse(raw) as Partial<AiConfig>;
 
-  const fileConfig: LmStudioConfig = {
+  const fileConfig: AiConfig = {
     enabled: parsed.enabled ?? defaultConfig.enabled,
     baseUrl: (parsed.baseUrl ?? defaultConfig.baseUrl).trim(),
     model: (parsed.model ?? defaultConfig.model).trim(),
@@ -71,11 +71,11 @@ export async function getLmStudioConfig(): Promise<LmStudioConfig> {
   return applyEnvOverrides(fileConfig);
 }
 
-export async function updateLmStudioConfig(
-  updates: Partial<LmStudioConfig>,
-): Promise<LmStudioConfig> {
-  const current = await getLmStudioConfig();
-  const merged: LmStudioConfig = {
+export async function updateAiConfig(
+  updates: Partial<AiConfig>,
+): Promise<AiConfig> {
+  const current = await getAiConfig();
+  const merged: AiConfig = {
     ...current,
     ...updates,
     baseUrl: (updates.baseUrl ?? current.baseUrl).trim(),
@@ -117,32 +117,64 @@ function parseTagsFromText(text: string): string[] {
   return mergeUniqueTags(rawParts);
 }
 
-export async function generateAutoTags(params: {
+function sanitizeDescription(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function parseDescriptionFromText(text: string): string {
+  return sanitizeDescription(text.replace(/^description\s*:\s*/i, ""));
+}
+
+interface AutoMetadata {
+  tags: string[];
+  description: string;
+}
+
+export async function generateAutoMetadata(params: {
   title: string;
   originalName: string;
   category: string;
   mimeType: string;
   existingTags: string[];
+  existingDescription: string;
   textSnippet?: string;
   imageFile?: {
     mimeType: string;
     bytes: Uint8Array;
   };
-}): Promise<string[]> {
-  const config = await getLmStudioConfig();
+}): Promise<AutoMetadata> {
+  const config = await getAiConfig();
   if (!config.enabled || !config.baseUrl || !config.model) {
-    return params.existingTags;
+    return {
+      tags: params.existingTags,
+      description: sanitizeDescription(params.existingDescription),
+    };
   }
 
   const prompt = [
-    "Generate concise asset tags.",
-    "Return ONLY a comma-separated list with up to 6 tags.",
-    "Use lowercase, no punctuation besides hyphen.",
+    "TASK: Generate metadata for one digital asset.",
+    "OUTPUT CONTRACT (STRICT): Return ONLY a single JSON object.",
+    'JSON schema: {"tags": string[], "description": string}',
+    "Do not wrap JSON in markdown or code fences.",
+    "Do not add extra keys, explanations, comments, or trailing text.",
+    "TAGS RULES:",
+    "- 3 to 6 tags when possible (never more than 6).",
+    "- lowercase only.",
+    "- use letters, numbers, and hyphens only.",
+    "- each tag should be short (1 to 3 words joined with hyphens).",
+    "- avoid generic tags unless they are genuinely descriptive.",
+    "DESCRIPTION RULES:",
+    "- exactly one sentence.",
+    "- 90 to 180 characters when possible (hard max 200).",
+    "- concise, concrete, and searchable.",
+    "- no quotes, no markdown, no bullet points.",
+    "- describe visible/semantic content, style, and likely usage.",
     `title: ${params.title}`,
     `file_name: ${params.originalName}`,
     `category: ${params.category}`,
     `mime_type: ${params.mimeType}`,
     `existing_tags: ${params.existingTags.join(", ") || "(none)"}`,
+    `existing_description: ${params.existingDescription || "(none)"}`,
     params.textSnippet
       ? `text_sample: ${params.textSnippet.slice(0, 500)}`
       : "",
@@ -192,7 +224,7 @@ export async function generateAutoTags(params: {
             {
               role: "system",
               content:
-                "You create short tagging vocabularies for digital assets. Output comma-separated tags only.",
+                "You generate asset metadata. You MUST follow the user's output contract exactly and return only valid JSON with keys tags and description.",
             },
             { role: "user", content: userContent },
           ],
@@ -202,17 +234,50 @@ export async function generateAutoTags(params: {
     );
 
     if (!response.ok) {
-      return params.existingTags;
+      return {
+        tags: params.existingTags,
+        description: sanitizeDescription(params.existingDescription),
+      };
     }
 
     const payload = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const text = payload.choices?.[0]?.message?.content ?? "";
-    const aiTags = parseTagsFromText(text);
-    return mergeUniqueTags([...params.existingTags, ...aiTags]);
+    let aiTags: string[] = [];
+    let aiDescription = "";
+
+    try {
+      const parsed = JSON.parse(text) as {
+        tags?: unknown;
+        description?: unknown;
+      };
+      if (Array.isArray(parsed.tags)) {
+        aiTags = parsed.tags.filter(
+          (value): value is string => typeof value === "string",
+        );
+      } else if (typeof parsed.tags === "string") {
+        aiTags = parseTagsFromText(parsed.tags);
+      }
+      if (typeof parsed.description === "string") {
+        aiDescription = parsed.description;
+      }
+    } catch {
+      aiTags = parseTagsFromText(text);
+      aiDescription = parseDescriptionFromText(text);
+    }
+
+    return {
+      tags: mergeUniqueTags([...params.existingTags, ...aiTags]),
+      description:
+        sanitizeDescription(aiDescription) ||
+        sanitizeDescription(params.existingDescription),
+    };
   } catch {
-    return params.existingTags;
+    return {
+      tags: params.existingTags,
+      description: sanitizeDescription(params.existingDescription),
+    };
   } finally {
     clearTimeout(timeout);
   }

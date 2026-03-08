@@ -19,6 +19,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 
   const body = (await request.json()) as {
     title?: unknown;
+    description?: unknown;
     tags?: unknown;
     licenses?: unknown;
     sourceUrl?: unknown;
@@ -57,9 +58,12 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 
   const sourceUrl =
     typeof body.sourceUrl === "string" ? body.sourceUrl.trim() : "";
+  const description =
+    typeof body.description === "string" ? body.description.trim() : "";
 
   const record = await updateAssetMetadata(params.id, {
     title: body.title.trim(),
+    description,
     tags,
     licenses,
     sourceUrl,

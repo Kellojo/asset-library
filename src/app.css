@@ -618,6 +618,24 @@ body {
   flex: 1;
 }
 
+.assetlib-description-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-inset);
+  color: var(--app-text);
+  padding: 0.6rem 0.7rem;
+  resize: vertical;
+  min-height: 4.8rem;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.assetlib-description-input:focus {
+  outline: 1px solid color-mix(in hsl, var(--accent) 65%, white 35%);
+  outline-offset: 1px;
+}
+
 .assetlib-tag-chip {
   display: inline-flex;
   align-items: center;

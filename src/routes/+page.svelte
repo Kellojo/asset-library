@@ -60,6 +60,7 @@
   let licenseQuery = "";
   let licenseDropdownOpen = false;
   let editSourceUrl = "";
+  let editDescription = "";
   let saveInProgress = false;
 
   let uploadQueue: File[] = [];
@@ -79,13 +80,13 @@
   let selectedFilterTags: string[] = [];
   let filterTagQuery = "";
   let didHydrateFiltersFromUrl = false;
-  let lmSettingsOpen = false;
-  let lmSaving = false;
+  let aiSettingsOpen = false;
+  let aiSaving = false;
   let uploadInputEl: HTMLInputElement | null = null;
   let editDialogEl: HTMLDialogElement | null = null;
-  let lmDialogEl: HTMLDialogElement | null = null;
+  let aiDialogEl: HTMLDialogElement | null = null;
   const DIALOG_CLOSE_ANIMATION_MS = 160;
-  let lmConfig = {
+  let aiConfig = {
     enabled: false,
     baseUrl: "http://127.0.0.1:1234",
     model: "",
@@ -99,6 +100,7 @@
     const matchesQuery =
       !q ||
       asset.title.toLowerCase().includes(q) ||
+      asset.description.toLowerCase().includes(q) ||
       asset.originalName.toLowerCase().includes(q) ||
       asset.tags.some((tag) => tag.toLowerCase().includes(q)) ||
       asset.category.toLowerCase().includes(q);
@@ -421,46 +423,44 @@
     }
   }
 
-  async function loadLmConfig(): Promise<void> {
+  async function loadAiConfig(): Promise<void> {
     try {
-      const response = await fetch("/api/integrations/lmstudio");
+      const response = await fetch("/api/integrations/ai");
       if (!response.ok) return;
-      const payload = (await response.json()) as { config: typeof lmConfig };
-      lmConfig = payload.config;
+      const payload = (await response.json()) as { config: typeof aiConfig };
+      aiConfig = payload.config;
     } catch {
       // Optional integration; ignore transient failures.
     }
   }
 
-  async function saveLmConfig(): Promise<void> {
-    lmSaving = true;
+  async function saveAiConfig(): Promise<void> {
+    aiSaving = true;
     errorMessage = "";
     successMessage = "";
 
     try {
-      const response = await fetch("/api/integrations/lmstudio", {
+      const response = await fetch("/api/integrations/ai", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(lmConfig),
+        body: JSON.stringify(aiConfig),
       });
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || "Failed to save LM Studio settings.");
+        throw new Error(payload.error || "Failed to save AI settings.");
       }
 
-      lmConfig = payload.config;
-      lmSettingsOpen = false;
-      successMessage = lmConfig.enabled
-        ? "LM Studio auto-tagging enabled."
-        : "LM Studio settings saved.";
+      aiConfig = payload.config;
+      aiSettingsOpen = false;
+      successMessage = aiConfig.enabled
+        ? "AI auto metadata enabled."
+        : "AI settings saved.";
     } catch (error) {
       errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to save LM Studio settings.";
+        error instanceof Error ? error.message : "Failed to save AI settings.";
     } finally {
-      lmSaving = false;
+      aiSaving = false;
     }
   }
 
@@ -504,6 +504,7 @@
         ? [...asset.licenses]
         : ["Unknown"];
     editSourceUrl = asset.sourceUrl ?? "";
+    editDescription = asset.description ?? "";
     tagQuery = "";
     licenseQuery = "";
     tagDropdownOpen = false;
@@ -518,6 +519,7 @@
     editTags = [];
     editLicenses = [];
     editSourceUrl = "";
+    editDescription = "";
     tagQuery = "";
     licenseQuery = "";
     tagDropdownOpen = false;
@@ -697,9 +699,9 @@
     animateDialogClose(editDialogEl, cancelEdit);
   }
 
-  function closeLmDialog(): void {
-    animateDialogClose(lmDialogEl, () => {
-      lmSettingsOpen = false;
+  function closeAiDialog(): void {
+    animateDialogClose(aiDialogEl, () => {
+      aiSettingsOpen = false;
     });
   }
 
@@ -725,6 +727,7 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title: editTitle,
+          description: editDescription,
           tags: editTags,
           licenses: editLicenses,
           sourceUrl: editSourceUrl,
@@ -825,7 +828,7 @@
   }
 
   onMount(loadAssets);
-  onMount(loadLmConfig);
+  onMount(loadAiConfig);
   onMount(() => {
     syncFiltersFromUrl();
     didHydrateFiltersFromUrl = true;
@@ -926,8 +929,8 @@
     <div class="assetlib-topbar-actions">
       <Button
         onclick={() => {
-          lmSettingsOpen = true;
-        }}>LM Studio</Button
+          aiSettingsOpen = true;
+        }}>AI</Button
       >
 
       <input
@@ -1059,7 +1062,7 @@
         <div class="assetlib-tools">
           <input
             bind:value={searchQuery}
-            placeholder="Search title, tag, file, category"
+            placeholder="Search title, description, tag, file, category"
           />
         </div>
 
@@ -1167,6 +1170,17 @@
       </label>
 
       <label class="assetlib-modal-label">
+        <span>Description</span>
+        <textarea
+          bind:value={editDescription}
+          class="assetlib-description-input"
+          placeholder="Short description"
+          rows="3"
+          maxlength="240"
+        ></textarea>
+      </label>
+
+      <label class="assetlib-modal-label">
         <span>Source URL</span>
         <Input
           bind:value={editSourceUrl}
@@ -1261,47 +1275,47 @@
     </dialog>
   {/if}
 
-  {#if lmSettingsOpen}
+  {#if aiSettingsOpen}
     <dialog
-      bind:this={lmDialogEl}
+      bind:this={aiDialogEl}
       class="assetlib-modal assetlib-glass"
       use:openAsModal
-      aria-label="LM Studio connection settings"
-      on:cancel|preventDefault={closeLmDialog}
+      aria-label="AI connection settings"
+      on:cancel|preventDefault={closeAiDialog}
       on:click={(event) => {
         if (event.target === event.currentTarget) {
-          closeLmDialog();
+          closeAiDialog();
         }
       }}
     >
-      <h2>LM Studio Auto-Tagging</h2>
+      <h2>AI Auto Metadata</h2>
       <p class="assetlib-muted">
-        Connect a local LM Studio OpenAI-compatible endpoint to auto-generate
-        tags on upload.
+        Connect an OpenAI-compatible endpoint to auto-generate tags and a short
+        description on upload.
       </p>
 
       <label class="assetlib-toggle">
-        <input type="checkbox" bind:checked={lmConfig.enabled} />
-        <span>Enable auto-tagging</span>
+        <input type="checkbox" bind:checked={aiConfig.enabled} />
+        <span>Enable auto metadata</span>
       </label>
 
       <label class="assetlib-modal-label">
         <span>Base URL</span>
         <Input
-          bind:value={lmConfig.baseUrl}
+          bind:value={aiConfig.baseUrl}
           placeholder="http://127.0.0.1:1234"
         />
       </label>
 
       <label class="assetlib-modal-label">
         <span>Model</span>
-        <Input bind:value={lmConfig.model} placeholder="qwen2.5-7b-instruct" />
+        <Input bind:value={aiConfig.model} placeholder="qwen2.5-7b-instruct" />
       </label>
 
       <label class="assetlib-modal-label">
         <span>API Key (optional)</span>
         <Input
-          bind:value={lmConfig.apiKey}
+          bind:value={aiConfig.apiKey}
           placeholder="leave empty for local dev"
         />
       </label>
@@ -1312,15 +1326,15 @@
           type="number"
           min="1000"
           step="500"
-          bind:value={lmConfig.timeoutMs}
+          bind:value={aiConfig.timeoutMs}
         />
       </label>
 
       <div class="assetlib-modal-actions">
-        <Button variant="emphasized" onclick={saveLmConfig} disabled={lmSaving}>
-          {lmSaving ? "Saving..." : "Save"}
+        <Button variant="emphasized" onclick={saveAiConfig} disabled={aiSaving}>
+          {aiSaving ? "Saving..." : "Save"}
         </Button>
-        <Button onclick={closeLmDialog}>Cancel</Button>
+        <Button onclick={closeAiDialog}>Cancel</Button>
       </div>
     </dialog>
   {/if}

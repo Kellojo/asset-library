@@ -66,41 +66,41 @@ Run behind Nginx/Caddy/Traefik for TLS and domain routing. The app itself is jus
 - `model-viewer` previews are available for `.glb` and `.gltf` files.
 - Other model formats are stored/downloadable but may not have an inline 3D preview.
 
-## LM Studio Auto-Tagging
+## AI Auto Metadata
 
-You can connect LM Studio from the UI:
+You can connect AI metadata generation from the UI:
 
-1. Open the app and click `LM Studio` in the top bar.
+1. Open the app and click `AI` in the top bar.
 2. Enable auto-tagging.
 3. Set base URL (default `http://127.0.0.1:1234`).
-4. Set the model name loaded in LM Studio.
+4. Set the model name loaded by your AI endpoint.
 5. Save.
 
-The app sends upload metadata to LM Studio using the OpenAI-compatible endpoint:
+The app sends upload metadata to your AI endpoint using the OpenAI-compatible API:
 
 - `POST /v1/chat/completions`
 
 Behavior:
 
 - Auto-generated tags are merged with existing tags.
-- If LM Studio is unavailable or times out, upload still succeeds with existing tags.
+- If the AI endpoint is unavailable or times out, upload still succeeds with existing tags.
 
 ### Configure via .env
 
-You can configure LM Studio via `.env` instead of the UI.
+You can configure AI metadata via `.env` instead of the UI.
 
 Supported variables:
 
-- `LMSTUDIO_ENABLED` (`true`/`false`)
-- `LMSTUDIO_BASE_URL` (e.g. `http://127.0.0.1:1234`)
-- `LMSTUDIO_MODEL` (loaded model name)
-- `LMSTUDIO_API_KEY` (optional)
-- `LMSTUDIO_TIMEOUT_MS` (e.g. `12000`)
+- `AI_ENABLED` (`true`/`false`)
+- `AI_BASE_URL` (e.g. `http://127.0.0.1:1234`)
+- `AI_MODEL` (loaded model name)
+- `AI_API_KEY` (optional)
+- `AI_TIMEOUT_MS` (e.g. `12000`)
 
 Notes:
 
 - Copy `.env.example` to `.env` and fill values.
-- When `LMSTUDIO_*` env vars are present, they override UI-saved settings in `data/lmstudio.json`.
+- When `AI_*` env vars are present, they override UI-saved settings in `data/ai-config.json`.
 
 ## Maintenance
 

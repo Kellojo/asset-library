@@ -8,7 +8,7 @@ import type {
   AssetRecord,
   AssetView,
 } from "$lib/types";
-import { generateAutoTags } from "$lib/server/lmstudio";
+import { generateAutoMetadata } from "$lib/server/ai";
 
 const dataRoot = path.join(process.cwd(), "data");
 const uploadsDir = path.join(dataRoot, "uploads");
@@ -111,6 +111,8 @@ export async function readAssets(): Promise<AssetRecord[]> {
   const parsed = JSON.parse(raw) as AssetRecord[];
   const normalized = parsed.map((record) => ({
     ...record,
+    description:
+      typeof record.description === "string" ? record.description.trim() : "",
     sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
     licenses: (() => {
       const normalizedLicenses = Array.isArray(record.licenses)
@@ -150,6 +152,7 @@ export function toAssetView(record: AssetRecord): AssetView {
 
 export async function saveAsset(params: {
   title: string;
+  description?: string;
   tags: string[];
   licenses?: string[];
   sourceUrl?: string;
@@ -197,12 +200,13 @@ export async function saveAsset(params: {
       ? textDecoder.decode(params.bytes.slice(0, 4_000))
       : undefined;
 
-  const autoTags = await generateAutoTags({
+  const autoMetadata = await generateAutoMetadata({
     title: params.title,
     originalName: params.fileName,
     category,
     mimeType: params.mimeType || "application/octet-stream",
     existingTags: params.tags,
+    existingDescription: params.description ?? "",
     textSnippet,
     imageFile:
       category === "texture"
@@ -218,7 +222,8 @@ export async function saveAsset(params: {
   const record: AssetRecord = {
     id,
     title: params.title,
-    tags: autoTags,
+    description: autoMetadata.description,
+    tags: autoMetadata.tags,
     licenses: (() => {
       const normalizedLicenses = (params.licenses ?? [])
         .map((license) => license.trim())
@@ -256,6 +261,7 @@ export async function updateAssetMetadata(
   id: string,
   updates: {
     title: string;
+    description: string;
     tags: string[];
     licenses: string[];
     sourceUrl: string;
@@ -269,6 +275,7 @@ export async function updateAssetMetadata(
   records[index] = {
     ...current,
     title: updates.title,
+    description: updates.description,
     tags: updates.tags,
     licenses: updates.licenses,
     sourceUrl: updates.sourceUrl,
