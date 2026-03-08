@@ -10,13 +10,25 @@
   import Dialog from "$lib/components/Dialog.svelte";
   import Input from "$lib/components/Input.svelte";
   import SearchField from "$lib/components/SearchField.svelte";
+  import SelectField from "$lib/components/SelectField.svelte";
   import UploadProgressPopup from "$lib/components/UploadProgressPopup.svelte";
 
   const FILTER_QUERY_KEYS = {
     todo: "todo",
     categories: "categories",
     tags: "tags",
+    sort: "sort",
   } as const;
+  const SORT_MODE_OPTIONS = [
+    { value: "best-match", label: "Best Match" },
+    { value: "newest", label: "Newest" },
+    { value: "oldest", label: "Oldest" },
+    { value: "title-asc", label: "Title A-Z" },
+    { value: "size-desc", label: "Largest Size" },
+    { value: "needs-metadata", label: "Needs Metadata First" },
+  ] as const;
+  type SortMode = (typeof SORT_MODE_OPTIONS)[number]["value"];
+  const DEFAULT_SORT_MODE: SortMode = "best-match";
   const THEME_STORAGE_KEY = "asset-library-theme";
   type ThemeMode = "light" | "dark";
 
@@ -84,6 +96,7 @@
 
   let searchQuery = "";
   let showTodoOnly = false;
+  let sortMode: SortMode = DEFAULT_SORT_MODE;
   let selectedCategories: AssetCategory[] = [];
   let selectedFilterTags: string[] = [];
   let filterTagQuery = "";
@@ -105,12 +118,14 @@
   };
   const textPreviews: Record<string, string> = {};
   let fuzzyMatchedAssetIds: Set<string> | null = null;
+  let fuzzyRankByAssetId: Map<string, number> | null = null;
 
   $: normalizedSearchQuery = searchQuery.trim();
   $: {
     const q = normalizedSearchQuery;
     if (!q) {
       fuzzyMatchedAssetIds = null;
+      fuzzyRankByAssetId = null;
     } else {
       const fuse = new Fuse(assets, {
         threshold: 0.35,
@@ -125,26 +140,70 @@
         ],
       });
 
-      fuzzyMatchedAssetIds = new Set(
-        fuse.search(q).map((result) => result.item.id),
+      const results = fuse.search(q);
+      fuzzyMatchedAssetIds = new Set(results.map((result) => result.item.id));
+      fuzzyRankByAssetId = new Map(
+        results.map((result, index) => [result.item.id, index]),
       );
     }
   }
 
-  $: visibleAssets = assets.filter((asset) => {
-    const matchesQuery =
-      !normalizedSearchQuery || !!fuzzyMatchedAssetIds?.has(asset.id);
-    const matchesTodo = !showTodoOnly || !asset.metadataEdited;
-    const matchesCategory =
-      selectedCategories.length === 0 ||
-      selectedCategories.includes(asset.category);
-    const matchesTags = selectedFilterTags.every((selectedTag) =>
-      asset.tags.some(
-        (assetTag) => assetTag.toLowerCase() === selectedTag.toLowerCase(),
-      ),
-    );
-    return matchesQuery && matchesTodo && matchesCategory && matchesTags;
-  });
+  $: visibleAssets = (() => {
+    const filteredAssets = assets.filter((asset) => {
+      const matchesQuery =
+        !normalizedSearchQuery || !!fuzzyMatchedAssetIds?.has(asset.id);
+      const matchesTodo = !showTodoOnly || !asset.metadataEdited;
+      const matchesCategory =
+        selectedCategories.length === 0 ||
+        selectedCategories.includes(asset.category);
+      const matchesTags = selectedFilterTags.every((selectedTag) =>
+        asset.tags.some(
+          (assetTag) => assetTag.toLowerCase() === selectedTag.toLowerCase(),
+        ),
+      );
+      return matchesQuery && matchesTodo && matchesCategory && matchesTags;
+    });
+
+    return [...filteredAssets].sort((left, right) => {
+      if (sortMode === "oldest") {
+        return Date.parse(left.uploadDate) - Date.parse(right.uploadDate);
+      }
+
+      if (sortMode === "title-asc") {
+        return left.title.localeCompare(right.title, undefined, {
+          sensitivity: "base",
+        });
+      }
+
+      if (sortMode === "size-desc") {
+        return right.size - left.size;
+      }
+
+      if (sortMode === "needs-metadata") {
+        if (left.metadataEdited !== right.metadataEdited) {
+          return left.metadataEdited ? 1 : -1;
+        }
+        return Date.parse(right.uploadDate) - Date.parse(left.uploadDate);
+      }
+
+      if (sortMode === "best-match") {
+        if (normalizedSearchQuery && fuzzyRankByAssetId) {
+          const leftRank =
+            fuzzyRankByAssetId.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank =
+            fuzzyRankByAssetId.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+
+          if (leftRank !== rightRank) {
+            return leftRank - rightRank;
+          }
+        }
+
+        return Date.parse(right.uploadDate) - Date.parse(left.uploadDate);
+      }
+
+      return Date.parse(right.uploadDate) - Date.parse(left.uploadDate);
+    });
+  })();
 
   $: todoCount = assets.filter((asset) => !asset.metadataEdited).length;
   $: allKnownTags = Array.from(
@@ -292,6 +351,11 @@
 
     const todoParam = url.searchParams.get(FILTER_QUERY_KEYS.todo);
     showTodoOnly = todoParam === "1" || todoParam === "true";
+
+    const sortParam = url.searchParams.get(FILTER_QUERY_KEYS.sort);
+    sortMode = SORT_MODE_OPTIONS.some((option) => option.value === sortParam)
+      ? (sortParam as SortMode)
+      : DEFAULT_SORT_MODE;
   }
 
   function applyTheme(theme: ThemeMode): void {
@@ -328,6 +392,7 @@
     url.searchParams.delete(FILTER_QUERY_KEYS.todo);
     url.searchParams.delete(FILTER_QUERY_KEYS.categories);
     url.searchParams.delete(FILTER_QUERY_KEYS.tags);
+    url.searchParams.delete(FILTER_QUERY_KEYS.sort);
 
     if (showTodoOnly) {
       url.searchParams.set(FILTER_QUERY_KEYS.todo, "1");
@@ -345,6 +410,10 @@
         FILTER_QUERY_KEYS.tags,
         selectedFilterTags.join(","),
       );
+    }
+
+    if (sortMode !== DEFAULT_SORT_MODE) {
+      url.searchParams.set(FILTER_QUERY_KEYS.sort, sortMode);
     }
 
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
@@ -932,6 +1001,7 @@
     showTodoOnly;
     selectedCategories;
     selectedFilterTags;
+    sortMode;
     syncUrlFromFilters();
   }
 
@@ -1168,6 +1238,7 @@
             bind:value={searchQuery}
             placeholder="Search title, description, tag, file, category"
           />
+          <SelectField bind:value={sortMode} options={SORT_MODE_OPTIONS} />
         </div>
 
         {#if loading}
@@ -1357,22 +1428,18 @@
 
       {#snippet actions()}
         <Button
-          disabled={
-            saveInProgress ||
+          disabled={saveInProgress ||
             replaceInProgress ||
-            deletingAssetId === editingAssetId
-          }
+            deletingAssetId === editingAssetId}
           onclick={triggerReplaceFilePicker}
         >
           {replaceInProgress ? "Replacing..." : "Replace File"}
         </Button>
         <Button
           variant="delete"
-          disabled={
-            saveInProgress ||
+          disabled={saveInProgress ||
             replaceInProgress ||
-            deletingAssetId === editingAssetId
-          }
+            deletingAssetId === editingAssetId}
           onclick={() => {
             const asset = assets.find((item) => item.id === editingAssetId);
             if (!asset) return;

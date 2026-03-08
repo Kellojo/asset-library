@@ -393,10 +393,39 @@ body {
 
 .assetlib-tools {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   align-items: center;
+}
+
+.assetlib-sort-control {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.assetlib-sort-control span {
+  font-size: 0.8rem;
+  color: var(--app-text-muted);
+  letter-spacing: 0.03em;
+}
+
+.assetlib-sort-control select {
+  width: 100%;
+  min-width: 13rem;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--app-text);
+  font: inherit;
+  line-height: 1.2;
+  padding: 0.53rem 0.7rem;
+}
+
+.assetlib-sort-control select:focus {
+  outline: 2px solid color-mix(in hsl, var(--accent) 45%, transparent 55%);
+  outline-offset: 1px;
 }
 
 .assetlib-library-layout {
@@ -766,6 +795,10 @@ body {
 
   .assetlib-tools {
     grid-template-columns: 1fr;
+  }
+
+  .assetlib-sort-control select {
+    min-width: 0;
   }
 
   .assetlib-topbar {
