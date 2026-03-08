@@ -71,6 +71,10 @@
     color: var(--app-text);
     text-decoration: none;
     text-align: center;
+
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .assetlib-btn:disabled {

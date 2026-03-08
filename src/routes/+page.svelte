@@ -19,6 +19,7 @@
     tags: "tags",
     sort: "sort",
   } as const;
+  const GITHUB_REPO_URL = "https://github.com/Kellojo/asset-library";
   const SORT_MODE_OPTIONS = [
     { value: "best-match", label: "Best Match" },
     { value: "newest", label: "Newest" },
@@ -367,6 +368,11 @@
 
   function toggleTheme(): void {
     applyTheme(themeMode === "dark" ? "light" : "dark");
+  }
+
+  function openGitHubRepo(): void {
+    if (!browser) return;
+    globalThis.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
   }
 
   function initializeTheme(): void {
@@ -1100,10 +1106,23 @@
         />
       </Button>
 
+      <Button onclick={openGitHubRepo} title="Open repository on GitHub">
+        <Icon icon="mdi:github" width="1rem" height="1rem" aria-hidden="true" />
+        View on GitHub
+      </Button>
+
       <Button
         onclick={() => {
           aiSettingsOpen = true;
-        }}>AI</Button
+        }}
+      >
+        <Icon
+          icon="mingcute:file-ai-fill"
+          width="1rem"
+          height="1rem"
+          aria-hidden="true"
+        />
+        AI</Button
       >
 
       <input
@@ -1122,6 +1141,7 @@
           uploadInputEl?.click();
         }}
       >
+        <Icon icon="mdi:upload" width="1rem" height="1rem" aria-hidden="true" />
         Import Files
       </Button>
 
