@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
   import Fuse from "fuse.js";
-  import { Toaster, toast } from "svelte-sonner";
+  import { toast } from "svelte-sonner";
   import { onMount } from "svelte";
   import { replaceState } from "$app/navigation";
   import { browser } from "$app/environment";
@@ -1059,20 +1059,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>Asset Library</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link
-    rel="preconnect"
-    href="https://fonts.gstatic.com"
-    crossorigin="anonymous"
-  />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    rel="stylesheet"
-  />
-</svelte:head>
-
 <svelte:window
   on:dragenter={onWindowDragEnter}
   on:dragover={onWindowDragOver}
@@ -1083,11 +1069,6 @@
 />
 
 <main class="assetlib-shell">
-  <Toaster
-    position="top-right"
-    toastOptions={{ unstyled: true, class: "toast" }}
-  />
-
   {#if isDragging}
     <div class="assetlib-drop-overlay" aria-hidden="true">
       <div class="assetlib-drop-overlay-card">Drop files to queue upload</div>

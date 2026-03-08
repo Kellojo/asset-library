@@ -7,11 +7,13 @@
   import appleTouchIcon from "$lib/assets/apple-touch-icon.png";
   import faviconIco from "$lib/assets/favicon.ico";
   import siteManifest from "$lib/assets/site.webmanifest";
+  import { Toaster } from "svelte-sonner";
 
   let { children } = $props();
 </script>
 
 <svelte:head>
+  <title>Asset Library</title>
   <link rel="icon" href={favicon} />
   <link rel="icon" type="image/png" href={favicon96} sizes="96x96" />
   <link rel="shortcut icon" href={faviconIco} />
@@ -21,3 +23,8 @@
 </svelte:head>
 
 {@render children()}
+
+<Toaster
+  position="top-right"
+  toastOptions={{ unstyled: true, class: "toast" }}
+/>
