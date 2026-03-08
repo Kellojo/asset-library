@@ -412,117 +412,6 @@ body {
   align-items: start;
 }
 
-.assetlib-filter-sidebar {
-  border: 1px solid var(--borderColor);
-  background: var(--background);
-  border-radius: 12px;
-  padding: 0.75rem;
-  display: grid;
-  gap: 1.5rem;
-  position: sticky;
-  top: 0.65rem;
-  max-height: calc(100dvh - 2.65rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-
-.assetlib-filter-sidebar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.assetlib-filter-sidebar:hover,
-.assetlib-filter-sidebar:focus-within {
-  scrollbar-width: thin;
-}
-
-.assetlib-filter-sidebar:hover::-webkit-scrollbar,
-.assetlib-filter-sidebar:focus-within::-webkit-scrollbar {
-  width: 0.55rem;
-  height: 0.55rem;
-}
-
-.assetlib-filter-sidebar:hover::-webkit-scrollbar-thumb,
-.assetlib-filter-sidebar:focus-within::-webkit-scrollbar-thumb {
-  background: color-mix(in hsl, var(--app-text-muted) 55%, transparent 45%);
-  border-radius: 999px;
-}
-
-.assetlib-filter-sidebar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-}
-
-.assetlib-filter-sidebar-head h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.assetlib-filter-section {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.assetlib-filter-title {
-  font-size: 0.875rem;
-  color: var(--app-text-muted);
-  letter-spacing: 0.04em;
-}
-
-.assetlib-filter-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.assetlib-filter-list-scroll {
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
-}
-
-.assetlib-filter-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-  border: 1px solid var(--borderHoverColor);
-  background: var(--backgroundLight);
-  color: var(--app-text);
-  border-radius: 9px;
-  padding: 0.5rem;
-  cursor: pointer;
-  text-transform: none;
-  font-size: 0.875rem;
-}
-
-.assetlib-filter-item-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.assetlib-filter-item:hover {
-  border-color: var(--accent);
-}
-
-.assetlib-filter-item.is-selected {
-  border-color: var(--accent-strong);
-  background: color-mix(in hsl, var(--backgroundLight) 65%, var(--accent) 35%);
-}
-
-.assetlib-filter-count {
-  min-width: 1.65rem;
-  text-align: center;
-  border-radius: 999px;
-  border: 1px solid var(--borderHoverColor);
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-
 .assetlib-library-main {
   min-width: 0;
 }
@@ -706,12 +595,6 @@ body {
 @media (max-width: 900px) {
   .assetlib-library-layout {
     grid-template-columns: 1fr;
-  }
-
-  .assetlib-filter-sidebar {
-    position: static;
-    max-height: none;
-    overflow: visible;
   }
 
   .assetlib-tools {

@@ -8,6 +8,7 @@
   import AssetCard from "$lib/components/AssetCard.svelte";
   import Button from "$lib/components/Button.svelte";
   import Dialog from "$lib/components/Dialog.svelte";
+  import FilterPane from "$lib/components/FilterPane.svelte";
   import Input from "$lib/components/Input.svelte";
   import SearchField from "$lib/components/SearchField.svelte";
   import SelectField from "$lib/components/SelectField.svelte";
@@ -1194,111 +1195,26 @@
 
   <section class="assetlib-glass assetlib-library">
     <div class="assetlib-library-layout">
-      <aside class="assetlib-filter-sidebar">
-        <div class="assetlib-filter-sidebar-head">
-          <h3>Filters</h3>
-          <Button
-            onclick={clearAllFilters}
-            disabled={selectedFilterTags.length === 0 &&
-              selectedFilterLicenses.length === 0 &&
-              selectedCategories.length === 0 &&
-              !showTodoOnly}>Clear</Button
-          >
-        </div>
-
-        <div class="assetlib-filter-section">
-          <span class="assetlib-filter-title">Status</span>
-          <button
-            type="button"
-            class="assetlib-filter-item"
-            class:is-selected={showTodoOnly}
-            aria-pressed={showTodoOnly}
-            on:click={() => {
-              showTodoOnly = !showTodoOnly;
-            }}
-          >
-            <span class="assetlib-filter-item-label">
-              <Icon
-                icon="mdi:checkbox-marked-outline"
-                width="0.9rem"
-                height="0.9rem"
-                aria-hidden="true"
-              />
-              <span>Only To Do</span>
-            </span>
-            <span class="assetlib-filter-count">{todoCount}</span>
-          </button>
-        </div>
-
-        <div class="assetlib-filter-section">
-          <span class="assetlib-filter-title">Category</span>
-          <div class="assetlib-filter-list">
-            {#each categoryCounts as row}
-              <button
-                type="button"
-                class="assetlib-filter-item"
-                class:is-selected={selectedCategories.includes(row.category)}
-                on:click={() => toggleCategory(row.category)}
-              >
-                <span class="assetlib-filter-item-label">
-                  <Icon
-                    icon={categoryIconByType[row.category]}
-                    width="0.9rem"
-                    height="0.9rem"
-                    aria-hidden="true"
-                  />
-                  <span>{formatCategoryLabel(row.category)}</span>
-                </span>
-                <span class="assetlib-filter-count">{row.count}</span>
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <div class="assetlib-filter-section">
-          <span class="assetlib-filter-title">Tags</span>
-          <SearchField
-            bind:value={filterTagQuery}
-            placeholder="Filter tags"
-            onkeydown={onFilterTagQueryKeyDown}
-          />
-          <div class="assetlib-filter-list assetlib-filter-list-scroll">
-            {#each filteredTagRows as row}
-              <button
-                type="button"
-                class="assetlib-filter-item"
-                class:is-selected={row.selected}
-                on:click={() => toggleFilterTag(row.tag)}
-              >
-                <span>{row.tag}</span>
-                <span class="assetlib-filter-count">{row.count}</span>
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <div class="assetlib-filter-section">
-          <span class="assetlib-filter-title">Licenses</span>
-          <SearchField
-            bind:value={filterLicenseQuery}
-            placeholder="Filter licenses"
-            onkeydown={onFilterLicenseQueryKeyDown}
-          />
-          <div class="assetlib-filter-list assetlib-filter-list-scroll">
-            {#each filteredLicenseRows as row}
-              <button
-                type="button"
-                class="assetlib-filter-item"
-                class:is-selected={row.selected}
-                on:click={() => toggleFilterLicense(row.license)}
-              >
-                <span>{row.license}</span>
-                <span class="assetlib-filter-count">{row.count}</span>
-              </button>
-            {/each}
-          </div>
-        </div>
-      </aside>
+      <FilterPane
+        bind:showTodoOnly
+        {todoCount}
+        {categoryCounts}
+        {selectedCategories}
+        {categoryIconByType}
+        {formatCategoryLabel}
+        {toggleCategory}
+        {clearAllFilters}
+        {selectedFilterTags}
+        {selectedFilterLicenses}
+        {filteredTagRows}
+        {toggleFilterTag}
+        bind:filterTagQuery
+        {onFilterTagQueryKeyDown}
+        {filteredLicenseRows}
+        {toggleFilterLicense}
+        bind:filterLicenseQuery
+        {onFilterLicenseQueryKeyDown}
+      />
 
       <div class="assetlib-library-main">
         <div class="assetlib-tools">
