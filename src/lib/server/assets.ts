@@ -88,7 +88,9 @@ async function ensureAssetHashes(
       }
 
       try {
-        const fileBytes = await readFile(path.join(uploadsDir, record.storedName));
+        const fileBytes = await readFile(
+          path.join(uploadsDir, record.storedName),
+        );
         updated = true;
         return {
           ...record,
@@ -209,7 +211,8 @@ export async function saveAsset(params: {
   await ensureStorage();
   const records = await readAssets();
   const incomingHash = computeAssetHash(params.bytes);
-  const { records: recordsWithHashes, updated } = await ensureAssetHashes(records);
+  const { records: recordsWithHashes, updated } =
+    await ensureAssetHashes(records);
   if (updated) {
     await writeAssets(recordsWithHashes);
   }
