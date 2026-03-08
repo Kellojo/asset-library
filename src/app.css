@@ -6,7 +6,7 @@
   --backgroundDark: hsl(0, 0%, 0%);
   --background: hsla(0, 0%, 5%, 0.5);
   --backgroundTextContrastShadow: hsla(0, 0%, 5%, 0.25);
-  --backgroundLight: hsl(0, 0%, 10%);
+  --backgroundLight: hsl(0 0% 10% / 0.72);
   --borderColor: hsla(0, 0%, 15%, 0.9);
   --borderHoverColor: hsla(0, 0%, 25%, 0.9);
 
@@ -32,6 +32,11 @@
   --canvas-bg: hsl(0 0% 7%);
   --canvas-grid: hsl(0 0% 70%);
   --canvas-grid-opacity: 0.14;
+  --bg-glow-a: hsl(192 78% 52% / 0.14);
+  --bg-glow-b: hsl(32 88% 56% / 0.1);
+  --bg-glow-c: hsl(276 70% 64% / 0.08);
+  --bg-grid-strong: hsl(0 0% 100% / 0.06);
+  --bg-grid-soft: hsl(0 0% 100% / 0.03);
   --handle-fill: hsl(0 0% 92%);
 
   --shadow-highlight: hsla(0, 0%, 100%, 15%);
@@ -71,7 +76,7 @@
   --backgroundDark: hsl(210 22% 95% / 0.92);
   --background: hsl(220 14% 93% / 0.78);
   --backgroundTextContrastShadow: hsla(222, 35%, 12%, 0.18);
-  --backgroundLight: hsl(210 28% 93% / 0.98);
+  --backgroundLight: hsl(210 28% 93% / 0.78);
   --borderColor: hsl(215 20% 84% / 0.95);
   --borderHoverColor: hsl(215 18% 74% / 0.95);
 
@@ -97,6 +102,11 @@
   --canvas-bg: hsl(210 22% 94%);
   --canvas-grid: hsl(210 18% 62%);
   --canvas-grid-opacity: 0.24;
+  --bg-glow-a: hsl(198 70% 52% / 0.18);
+  --bg-glow-b: hsl(28 88% 54% / 0.12);
+  --bg-glow-c: hsl(262 72% 60% / 0.1);
+  --bg-grid-strong: hsl(215 28% 34% / 0.1);
+  --bg-grid-soft: hsl(215 20% 42% / 0.06);
   --handle-fill: hsl(0 0% 100%);
 
   --shadow-highlight: hsla(0, 0%, 100%, 0.9);
@@ -140,6 +150,31 @@ body {
   padding: 0;
   min-height: 100vh;
   background-color: var(--app-bg);
+  background-image:
+    radial-gradient(42rem 26rem at 8% -6%, var(--bg-glow-a), transparent 68%),
+    radial-gradient(34rem 24rem at 100% 6%, var(--bg-glow-b), transparent 68%),
+    radial-gradient(36rem 30rem at 82% 96%, var(--bg-glow-c), transparent 72%),
+    linear-gradient(var(--bg-grid-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-soft) 1px, transparent 1px),
+    linear-gradient(var(--bg-grid-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-strong) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    auto,
+    1.5rem 1.5rem,
+    1.5rem 1.5rem,
+    6rem 6rem,
+    6rem 6rem;
+  background-position:
+    center,
+    center,
+    center,
+    0 0,
+    0 0,
+    0 0,
+    0 0;
+  background-attachment: fixed;
   color: var(--app-text);
 }
 
@@ -187,8 +222,9 @@ body {
 }
 
 .assetlib-glass {
-  background: linear-gradient(140deg, var(--surface-1), var(--surface-2));
+  background: linear-gradient(20deg, var(--surface-1), var(--surface-2));
   border: 1px solid var(--border-1);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   box-shadow: var(--shadow-l);
   border-radius: 16px;
@@ -199,7 +235,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 1rem;
   position: relative;
   z-index: var(--z-static-title);
 }
