@@ -1259,7 +1259,7 @@
         {#if loading}
           <p>Loading assets...</p>
         {:else if assets.length === 0}
-          <p>No assets yet.</p>
+          <p>No assets yet, get started by dragging and dropping files here.</p>
         {:else if visibleAssets.length === 0}
           <p>No assets match this filter.</p>
         {:else}

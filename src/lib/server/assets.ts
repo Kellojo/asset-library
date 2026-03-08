@@ -148,6 +148,24 @@ function getPreviewKind(
   return "none";
 }
 
+function getAudioAttachmentFormat(
+  fileName: string,
+  mimeType: string,
+): "mp3" | "wav" | undefined {
+  const ext = path.extname(fileName).toLowerCase();
+  if (
+    mimeType === "audio/wav" ||
+    mimeType === "audio/x-wav" ||
+    ext === ".wav"
+  ) {
+    return "wav";
+  }
+  if (mimeType === "audio/mpeg" || ext === ".mp3") {
+    return "mp3";
+  }
+  return undefined;
+}
+
 export async function readAssets(): Promise<AssetRecord[]> {
   await ensureStorage();
   const raw = await readFile(metadataPath, "utf8");
@@ -275,6 +293,20 @@ export async function saveAsset(params: {
             mimeType: params.mimeType || "application/octet-stream",
             bytes: params.bytes,
           }
+        : undefined,
+    audioFile:
+      category === "audio"
+        ? (() => {
+            const format = getAudioAttachmentFormat(
+              params.fileName,
+              params.mimeType || "application/octet-stream",
+            );
+            if (!format) return undefined;
+            return {
+              format,
+              bytes: params.bytes,
+            };
+          })()
         : undefined,
   });
 

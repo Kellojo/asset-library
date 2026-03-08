@@ -157,6 +157,10 @@ export async function generateAutoMetadata(params: {
     mimeType: string;
     bytes: Uint8Array;
   };
+  audioFile?: {
+    format: "mp3" | "wav";
+    bytes: Uint8Array;
+  };
 }): Promise<AutoMetadata> {
   const config = await getAiConfig();
   if (!config.enabled || !config.baseUrl || !config.model) {
@@ -204,52 +208,75 @@ export async function generateAutoMetadata(params: {
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
   const canAttachImage =
     !!params.imageFile &&
     params.imageFile.bytes.length > 0 &&
     params.imageFile.bytes.length <= MAX_IMAGE_BYTES &&
     params.imageFile.mimeType.startsWith("image/");
 
-  const userContent = canAttachImage
-    ? [
-        { type: "text", text: prompt },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:${params.imageFile!.mimeType};base64,${Buffer.from(
-              params.imageFile!.bytes,
-            ).toString("base64")}`,
+  const canAttachAudio =
+    !!params.audioFile &&
+    params.audioFile.bytes.length > 0 &&
+    params.audioFile.bytes.length <= MAX_AUDIO_BYTES;
+
+  const multimodalContent: Array<Record<string, unknown>> = [
+    { type: "text", text: prompt },
+  ];
+
+  if (canAttachImage) {
+    multimodalContent.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${params.imageFile!.mimeType};base64,${Buffer.from(
+          params.imageFile!.bytes,
+        ).toString("base64")}`,
+      },
+    });
+  }
+
+  if (canAttachAudio) {
+    multimodalContent.push({
+      type: "input_audio",
+      input_audio: {
+        data: Buffer.from(params.audioFile!.bytes).toString("base64"),
+        format: params.audioFile!.format,
+      },
+    });
+  }
+
+  const userContent = multimodalContent.length > 1 ? multimodalContent : prompt;
+
+  async function requestCompletion(content: unknown): Promise<Response> {
+    return fetch(`${config.baseUrl.replace(/\/$/, "")}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(config.apiKey ? { authorization: `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You generate asset metadata. You MUST follow the user's output contract exactly and return only valid JSON with keys tags and description.",
           },
-        },
-      ]
-    : prompt;
+          { role: "user", content },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  }
 
   try {
-    const response = await fetch(
-      `${config.baseUrl.replace(/\/$/, "")}/v1/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(config.apiKey
-            ? { authorization: `Bearer ${config.apiKey}` }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: config.model,
-          temperature: 0.2,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You generate asset metadata. You MUST follow the user's output contract exactly and return only valid JSON with keys tags and description.",
-            },
-            { role: "user", content: userContent },
-          ],
-        }),
-        signal: controller.signal,
-      },
-    );
+    let response = await requestCompletion(userContent);
+
+    // If an endpoint rejects audio input, retry once with text-only prompt.
+    if (!response.ok && canAttachAudio) {
+      response = await requestCompletion(prompt);
+    }
 
     if (!response.ok) {
       return {
