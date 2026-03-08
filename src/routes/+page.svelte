@@ -149,6 +149,7 @@
           { name: "title", weight: 0.35 },
           { name: "description", weight: 0.25 },
           { name: "tags", weight: 0.2 },
+          { name: "fileType", weight: 0.15 },
           { name: "originalName", weight: 0.15 },
           { name: "category", weight: 0.05 },
         ],
@@ -1388,7 +1389,7 @@
         <div class="assetlib-tools">
           <SearchField
             bind:value={searchQuery}
-            placeholder="Search title, description, tag, file, category"
+            placeholder="Search title, description, tag, file type, file, category"
           />
           <SelectField bind:value={sortMode} options={SORT_MODE_OPTIONS} />
         </div>

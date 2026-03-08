@@ -166,12 +166,33 @@ function getAudioAttachmentFormat(
   return undefined;
 }
 
+function getFileType(fileName: string, mimeType: string): string {
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext.startsWith(".") && ext.length > 1) {
+    return ext.slice(1);
+  }
+
+  const subtype = mimeType.split("/")[1]?.split(";")[0]?.trim().toLowerCase();
+  if (!subtype) return "unknown";
+
+  return subtype
+    .replace("x-", "")
+    .replace("svg+xml", "svg")
+    .replace("jpeg", "jpg")
+    .replace("mpeg", "mp3")
+    .replace(/\+xml$/i, "");
+}
+
 export async function readAssets(): Promise<AssetRecord[]> {
   await ensureStorage();
   const raw = await readFile(metadataPath, "utf8");
   const parsed = JSON.parse(raw) as AssetRecord[];
   const normalized = parsed.map((record) => ({
     ...record,
+    fileType:
+      typeof record.fileType === "string" && record.fileType.trim()
+        ? record.fileType.trim().toLowerCase()
+        : getFileType(record.originalName, record.mimeType),
     hash:
       typeof record.hash === "string" && record.hash.trim()
         ? record.hash.trim()
@@ -330,6 +351,10 @@ export async function saveAsset(params: {
     uploadDate: new Date().toISOString(),
     originalName: params.fileName,
     storedName,
+    fileType: getFileType(
+      params.fileName,
+      params.mimeType || "application/octet-stream",
+    ),
     hash: incomingHash,
     mimeType: params.mimeType || "application/octet-stream",
     size: params.size,
@@ -447,6 +472,10 @@ export async function replaceAssetFile(
     ...current,
     originalName: replacement.fileName,
     storedName,
+    fileType: getFileType(
+      replacement.fileName,
+      replacement.mimeType || "application/octet-stream",
+    ),
     hash: incomingHash,
     mimeType: replacement.mimeType || "application/octet-stream",
     size: replacement.size,

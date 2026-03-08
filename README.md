@@ -92,6 +92,13 @@ You can configure **AI metadata** via `.env` instead of the UI.
 Contributions are very welcome! Just fork the repo and open a PR with your changes.
 This can be anything from bug fixes, new features, or even just improving documentation.
 
+Roadmap:
+- Bulk actions (tagging, deleting, downloading)
+- Metadata generation for 3D models
+- Add support for more file types (e.g. video, fonts, ...)
+- User accounts and permissions
+- Improved infinite scrolling/padination for large libraries
+
 ## 🛠️ Development
 
 ```bash
