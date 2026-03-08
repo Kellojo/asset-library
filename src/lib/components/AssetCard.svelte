@@ -262,12 +262,6 @@
     justify-content: space-between;
     gap: 0.45rem;
     pointer-events: none;
-    background: linear-gradient(
-      180deg,
-      var(--backgroundTextContrastShadow) 0%,
-      transparent 46%,
-      var(--backgroundTextContrastShadow) 100%
-    );
   }
 
   .assetlib-preview-layer {

@@ -12,6 +12,7 @@
   let canvas = $state<HTMLCanvasElement | null>(null);
   let isInView = $state(false);
   let errorMessage = $state("");
+  let themeKey = $state("");
 
   function fileExt(name: string): string {
     const ext = name.split(".").pop();
@@ -62,10 +63,28 @@
     );
 
     observer.observe(container);
-    return () => observer.disconnect();
+
+    themeKey =
+      globalThis.document.documentElement.getAttribute("data-theme") || "dark";
+    const themeObserver = new MutationObserver(() => {
+      themeKey =
+        globalThis.document.documentElement.getAttribute("data-theme") ||
+        "dark";
+    });
+    themeObserver.observe(globalThis.document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => {
+      observer.disconnect();
+      themeObserver.disconnect();
+    };
   });
 
   $effect(() => {
+    // Re-run renderer setup on theme changes so model lighting and grid colors update.
+    themeKey;
     if (!isInView || !canvas) return;
 
     const localCanvas = canvas;
@@ -87,10 +106,7 @@
           "--accent-strong",
           "hsl(217 92% 70%)",
         );
-        const gridColor = readCssVar("--canvas-grid", "hsl(0 0% 70%)");
-        const gridOpacity = Number.parseFloat(
-          readCssVar("--canvas-grid-opacity", "0.14"),
-        );
+        const gridColor = readCssVar("--canvas-grid", "hsl(0 0% 82%)");
 
         if (disposed) return;
 
@@ -124,7 +140,7 @@
           : [grid.material];
         for (const material of gridMaterials) {
           material.transparent = true;
-          material.opacity = Number.isFinite(gridOpacity) ? gridOpacity : 0.14;
+          material.opacity = 0.25;
         }
         grid.position.y = -1;
         scene.add(grid);

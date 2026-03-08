@@ -22,7 +22,9 @@
 
   --canvas-bg: hsl(0 0% 7%);
   --canvas-grid: hsl(0 0% 70%);
-  --canvas-grid-opacity: 0.14;
+  --audio-wave-color: hsl(0 0% 60%);
+  --audio-wave-progress: hsl(0 0% 35%);
+  --audio-wave-cursor: hsl(0 0% 100%);
   --bg-glow-a: hsl(192 78% 52% / 0.14);
   --bg-glow-b: hsl(32 88% 56% / 0.1);
   --bg-glow-c: hsl(276 70% 64% / 0.08);
@@ -83,8 +85,10 @@
   --accent-strong: hsl(0 0% 22%);
 
   --canvas-bg: hsl(210 30% 96%);
-  --canvas-grid: hsl(210 14% 56%);
-  --canvas-grid-opacity: 0.2;
+  --canvas-grid: hsl(0, 0%, 70%);
+  --audio-wave-color: hsl(0 0% 65%);
+  --audio-wave-progress: hsl(0 0% 40%);
+  --audio-wave-cursor: hsl(0 0% 0%);
   --bg-glow-a: hsl(192 78% 52% / 0.16);
   --bg-glow-b: hsl(32 88% 56% / 0.11);
   --bg-glow-c: hsl(276 70% 64% / 0.1);

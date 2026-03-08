@@ -7,6 +7,7 @@
   let waveformEl: HTMLDivElement | null = null;
   let wavesurfer: WaveSurfer | null = null;
   let observer: IntersectionObserver | null = null;
+  let themeObserver: MutationObserver | null = null;
 
   let isReady = $state(false);
   let isPlaying = $state(false);
@@ -15,6 +16,32 @@
   let duration = $state(0);
   let isLoading = $state(false);
   let hasInitialized = false;
+
+  type WaveformColors = {
+    waveColor: string;
+    progressColor: string;
+    cursorColor: string;
+  };
+
+  function readWaveformColors(): WaveformColors {
+    const styles = getComputedStyle(document.documentElement);
+    return {
+      waveColor:
+        styles.getPropertyValue("--audio-wave-color").trim() ||
+        "rgba(220, 220, 220, 0.56)",
+      progressColor:
+        styles.getPropertyValue("--audio-wave-progress").trim() ||
+        "rgba(255, 255, 255, 0.95)",
+      cursorColor:
+        styles.getPropertyValue("--audio-wave-cursor").trim() ||
+        "rgba(255, 255, 255, 0.7)",
+    };
+  }
+
+  function applyWaveformTheme(): void {
+    if (!wavesurfer) return;
+    wavesurfer.setOptions(readWaveformColors());
+  }
 
   async function initWaveform(): Promise<void> {
     if (!waveformEl || hasInitialized || isLoading) return;
@@ -25,6 +52,7 @@
     try {
       const { default: WaveSurfer } = await import("wavesurfer.js");
       if (!waveformEl) return;
+      const colors = readWaveformColors();
 
       wavesurfer = WaveSurfer.create({
         container: waveformEl,
@@ -35,9 +63,9 @@
         barRadius: 2,
         normalize: true,
         dragToSeek: true,
-        waveColor: "rgba(220, 220, 220, 0.56)",
-        progressColor: "rgba(255, 255, 255, 0.95)",
-        cursorColor: "rgba(255, 255, 255, 0.7)",
+        waveColor: colors.waveColor,
+        progressColor: colors.progressColor,
+        cursorColor: colors.cursorColor,
         cursorWidth: 2,
       });
 
@@ -96,6 +124,14 @@
   onMount(() => {
     if (!waveformEl) return;
 
+    themeObserver = new MutationObserver(() => {
+      applyWaveformTheme();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
     observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -119,6 +155,8 @@
   onDestroy(() => {
     observer?.disconnect();
     observer = null;
+    themeObserver?.disconnect();
+    themeObserver = null;
     wavesurfer?.destroy();
     wavesurfer = null;
   });
@@ -166,7 +204,6 @@
   .assetlib-audio-wave {
     width: 100%;
     height: clamp(6rem, 35%, 7.5rem);
-    background: var(--canvas-bg);
     overflow: hidden;
   }
 
@@ -183,7 +220,7 @@
     border: 1px solid var(--borderHoverColor);
     border-radius: 12px;
     background: color-mix(in oklab, var(--backgroundLight), black 8%);
-    color: var(--text-main);
+    color: var(--app-text);
     font-weight: 600;
     padding: 0.45rem 0.85rem;
     cursor: pointer;
@@ -197,7 +234,7 @@
   .assetlib-audio-time {
     margin: 0;
     font-size: 0.84rem;
-    color: var(--text-dim);
+    color: var(--app-text-muted);
     font-variant-numeric: tabular-nums;
   }
 
