@@ -75,7 +75,7 @@ This keeps setup **very small and easy to back up**.
 
 If a legacy `data/assets.json` exists, it is automatically migrated into SQLite on first startup.
 
-# ✨ AI Auto Metadata
+# ✨ AI Metadata Generation
 
 You can connect **AI metadata generation** from the UI:
 
@@ -90,11 +90,8 @@ The app sends upload metadata to your AI endpoint using the **OpenAI-compatible 
 - `POST /v1/chat/completions`
 
 For best results choose an AI model that supports image inputs so it can analyze file previews.
-
-### ⚙️ Behavior
-
-- 🏷️ Auto-generated tags are **merged with existing tags**
-- ⚠️ If the AI endpoint is unavailable or times out, upload **still succeeds** with existing tags
+Models that have been tried:
+- mistralai/devstral-small-2-2512
 
 ### ⚙️ Configure via `.env`
 
