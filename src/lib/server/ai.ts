@@ -284,7 +284,15 @@ export async function generateAutoMetadata(params: {
     const runGeneration = async (withReasoningEffort: boolean) => {
       const providerOptions =
         withReasoningEffort && config.reasoningEffort
-          ? { openai: { reasoningEffort: config.reasoningEffort } }
+          ? {
+              openai: {
+                reasoningEffort: config.reasoningEffort,
+                // Unknown model IDs (e.g. qwen/... via LM Studio) may be
+                // treated as non-reasoning by default and have reasoning
+                // options stripped unless we force reasoning mode.
+                forceReasoning: true,
+              },
+            }
           : undefined;
 
       const reasoningApplied =
