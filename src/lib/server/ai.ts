@@ -266,13 +266,36 @@ export async function generateAutoMetadata(params: {
     baseURL: `${config.baseUrl.replace(/\/$/, "")}/v1`,
     apiKey: config.apiKey || "lm-studio",
   });
+  const requestStartedAt = Date.now();
+
+  const elapsedMs = (): number => Date.now() - requestStartedAt;
 
   try {
+    const reasoningRequested = config.reasoningEffort || "(unset)";
+    console.info("[ai] metadata request start", {
+      model: config.model,
+      timeoutMs: config.timeoutMs,
+      temperature: config.temperature,
+      reasoningEffortRequested: reasoningRequested,
+      category: params.category,
+      fileName: params.originalName,
+    });
+
     const runGeneration = async (withReasoningEffort: boolean) => {
       const providerOptions =
         withReasoningEffort && config.reasoningEffort
           ? { openai: { reasoningEffort: config.reasoningEffort } }
           : undefined;
+
+      const reasoningApplied =
+        withReasoningEffort && !!config.reasoningEffort
+          ? config.reasoningEffort
+          : "(none)";
+      console.info("[ai] metadata generation attempt", {
+        model: config.model,
+        temperature: config.temperature,
+        reasoningEffortApplied: reasoningApplied,
+      });
 
       return generateText({
         model: provider(config.model),
@@ -296,6 +319,10 @@ export async function generateAutoMetadata(params: {
       }
       console.warn(
         "AI request with reasoningEffort failed, retrying without reasoningEffort.",
+        {
+          model: config.model,
+          reasoningEffortRequested: config.reasoningEffort,
+        },
       );
       ({ output } = await runGeneration(false));
     }
@@ -308,14 +335,27 @@ export async function generateAutoMetadata(params: {
     const aiDescription =
       typeof output.description === "string" ? output.description : "";
 
+    console.info("[ai] metadata request success", {
+      model: config.model,
+      reasoningEffortRequested: reasoningRequested,
+      tagsGenerated: aiTags.length,
+      descriptionGenerated: aiDescription.length > 0,
+      elapsedMs: elapsedMs(),
+    });
+
     return {
       tags: mergeUniqueTags([...params.existingTags, ...aiTags]),
       description:
         sanitizeDescription(aiDescription) ||
         sanitizeDescription(params.existingDescription),
     };
-  } catch {
-    console.error("AI request failed or timed out.");
+  } catch (error) {
+    console.error("AI request failed or timed out.", {
+      model: config.model,
+      reasoningEffortRequested: config.reasoningEffort || "(unset)",
+      error: error instanceof Error ? error.message : String(error),
+      elapsedMs: elapsedMs(),
+    });
     return {
       tags: params.existingTags,
       description: sanitizeDescription(params.existingDescription),
