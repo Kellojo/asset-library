@@ -1,6 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "$env/dynamic/private";
+import { createOpenAI } from "@ai-sdk/openai";
+import { generateText, Output } from "ai";
+import { z } from "zod";
 
 export interface AiConfig {
   enabled: boolean;
@@ -8,6 +11,15 @@ export interface AiConfig {
   model: string;
   apiKey: string;
   timeoutMs: number;
+  temperature: number;
+  reasoningEffort:
+    | ""
+    | "none"
+    | "minimal"
+    | "low"
+    | "medium"
+    | "high"
+    | "xhigh";
   customInstruction: string;
 }
 
@@ -19,7 +31,9 @@ const defaultConfig: AiConfig = {
   baseUrl: "http://127.0.0.1:1234",
   model: "",
   apiKey: "",
-  timeoutMs: 12_000,
+  timeoutMs: 120_000,
+  temperature: 0.2,
+  reasoningEffort: "",
   customInstruction: "",
 };
 
@@ -42,6 +56,37 @@ function parseEnvNumber(value: string | undefined): number | undefined {
   return Math.max(1_000, parsed);
 }
 
+function clampTemperature(value: number): number {
+  return Math.min(2, Math.max(0, value));
+}
+
+function parseEnvTemperature(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  return clampTemperature(parsed);
+}
+
+function sanitizeReasoningEffort(value: unknown): AiConfig["reasoningEffort"] {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "none" ||
+    normalized === "minimal" ||
+    normalized === "low" ||
+    normalized === "medium" ||
+    normalized === "high" ||
+    normalized === "xhigh"
+  ) {
+    return normalized;
+  }
+
+  return "";
+}
+
 function applyEnvOverrides(config: AiConfig): AiConfig {
   return {
     enabled: parseEnvBoolean(env.AI_ENABLED) ?? config.enabled,
@@ -49,6 +94,12 @@ function applyEnvOverrides(config: AiConfig): AiConfig {
     model: env.AI_MODEL?.trim() || config.model,
     apiKey: env.AI_API_KEY ?? config.apiKey,
     timeoutMs: parseEnvNumber(env.AI_TIMEOUT_MS) ?? config.timeoutMs,
+    temperature:
+      parseEnvTemperature(env.AI_TEMPERATURE) ??
+      clampTemperature(config.temperature),
+    reasoningEffort:
+      sanitizeReasoningEffort(env.AI_REASONING_EFFORT) ||
+      config.reasoningEffort,
     customInstruction:
       sanitizeInstruction(env.AI_CUSTOM_INSTRUCTION ?? "") ||
       config.customInstruction,
@@ -75,6 +126,12 @@ export async function getAiConfig(): Promise<AiConfig> {
     model: (parsed.model ?? defaultConfig.model).trim(),
     apiKey: parsed.apiKey ?? defaultConfig.apiKey,
     timeoutMs: parsed.timeoutMs ?? defaultConfig.timeoutMs,
+    temperature: clampTemperature(
+      typeof parsed.temperature === "number"
+        ? parsed.temperature
+        : defaultConfig.temperature,
+    ),
+    reasoningEffort: sanitizeReasoningEffort(parsed.reasoningEffort),
     customInstruction: sanitizeInstruction(
       parsed.customInstruction ?? defaultConfig.customInstruction,
     ),
@@ -93,6 +150,10 @@ export async function updateAiConfig(
     baseUrl: (updates.baseUrl ?? current.baseUrl).trim(),
     model: (updates.model ?? current.model).trim(),
     timeoutMs: Math.max(1_000, updates.timeoutMs ?? current.timeoutMs),
+    temperature: clampTemperature(updates.temperature ?? current.temperature),
+    reasoningEffort: sanitizeReasoningEffort(
+      updates.reasoningEffort ?? current.reasoningEffort,
+    ),
     customInstruction: sanitizeInstruction(
       updates.customInstruction ?? current.customInstruction,
     ),
@@ -123,27 +184,19 @@ function mergeUniqueTags(input: string[]): string[] {
   return out.slice(0, 8);
 }
 
-function parseTagsFromText(text: string): string[] {
-  const rawParts = text
-    .replace(/[\[\]{}]/g, "")
-    .split(/[,\n]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return mergeUniqueTags(rawParts);
-}
-
 function sanitizeDescription(value: string): string {
   return value.replace(/\s+/g, " ").trim().slice(0, 240);
-}
-
-function parseDescriptionFromText(text: string): string {
-  return sanitizeDescription(text.replace(/^description\s*:\s*/i, ""));
 }
 
 interface AutoMetadata {
   tags: string[];
   description: string;
 }
+
+const metadataSchema = z.object({
+  tags: z.array(z.string()).default([]),
+  description: z.string().default(""),
+});
 
 export async function generateAutoMetadata(params: {
   title: string;
@@ -209,110 +262,51 @@ export async function generateAutoMetadata(params: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
-  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-  const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
-  const canAttachImage =
-    !!params.imageFile &&
-    params.imageFile.bytes.length > 0 &&
-    params.imageFile.bytes.length <= MAX_IMAGE_BYTES &&
-    params.imageFile.mimeType.startsWith("image/");
-
-  const canAttachAudio =
-    !!params.audioFile &&
-    params.audioFile.bytes.length > 0 &&
-    params.audioFile.bytes.length <= MAX_AUDIO_BYTES;
-
-  const multimodalContent: Array<Record<string, unknown>> = [
-    { type: "text", text: prompt },
-  ];
-
-  if (canAttachImage) {
-    multimodalContent.push({
-      type: "image_url",
-      image_url: {
-        url: `data:${params.imageFile!.mimeType};base64,${Buffer.from(
-          params.imageFile!.bytes,
-        ).toString("base64")}`,
-      },
-    });
-  }
-
-  if (canAttachAudio) {
-    multimodalContent.push({
-      type: "input_audio",
-      input_audio: {
-        data: Buffer.from(params.audioFile!.bytes).toString("base64"),
-        format: params.audioFile!.format,
-      },
-    });
-  }
-
-  const userContent = multimodalContent.length > 1 ? multimodalContent : prompt;
-
-  async function requestCompletion(content: unknown): Promise<Response> {
-    return fetch(`${config.baseUrl.replace(/\/$/, "")}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(config.apiKey ? { authorization: `Bearer ${config.apiKey}` } : {}),
-      },
-      body: JSON.stringify({
-        model: config.model,
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You generate asset metadata. You MUST follow the user's output contract exactly and return only valid JSON with keys tags and description.",
-          },
-          { role: "user", content },
-        ],
-      }),
-      signal: controller.signal,
-    });
-  }
+  const provider = createOpenAI({
+    baseURL: `${config.baseUrl.replace(/\/$/, "")}/v1`,
+    apiKey: config.apiKey || "lm-studio",
+  });
 
   try {
-    let response = await requestCompletion(userContent);
+    const runGeneration = async (withReasoningEffort: boolean) => {
+      const providerOptions =
+        withReasoningEffort && config.reasoningEffort
+          ? { openai: { reasoningEffort: config.reasoningEffort } }
+          : undefined;
 
-    // If an endpoint rejects audio input, retry once with text-only prompt.
-    if (!response.ok && canAttachAudio) {
-      response = await requestCompletion(prompt);
-    }
-
-    if (!response.ok) {
-      return {
-        tags: params.existingTags,
-        description: sanitizeDescription(params.existingDescription),
-      };
-    }
-
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      return generateText({
+        model: provider(config.model),
+        output: Output.object({ schema: metadataSchema }),
+        temperature: config.temperature,
+        maxRetries: 1,
+        abortSignal: controller.signal,
+        providerOptions,
+        system:
+          "You generate asset metadata. You MUST follow the user's output contract exactly and return only valid JSON with keys tags and description.",
+        prompt,
+      });
     };
-    const text = payload.choices?.[0]?.message?.content ?? "";
-    let aiTags: string[] = [];
-    let aiDescription = "";
 
+    let output: z.infer<typeof metadataSchema>;
     try {
-      const parsed = JSON.parse(text) as {
-        tags?: unknown;
-        description?: unknown;
-      };
-      if (Array.isArray(parsed.tags)) {
-        aiTags = parsed.tags.filter(
-          (value): value is string => typeof value === "string",
-        );
-      } else if (typeof parsed.tags === "string") {
-        aiTags = parseTagsFromText(parsed.tags);
+      ({ output } = await runGeneration(true));
+    } catch (error) {
+      if (!config.reasoningEffort) {
+        throw error;
       }
-      if (typeof parsed.description === "string") {
-        aiDescription = parsed.description;
-      }
-    } catch {
-      aiTags = parseTagsFromText(text);
-      aiDescription = parseDescriptionFromText(text);
+      console.warn(
+        "AI request with reasoningEffort failed, retrying without reasoningEffort.",
+      );
+      ({ output } = await runGeneration(false));
     }
+
+    const aiTags = Array.isArray(output.tags)
+      ? output.tags.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    const aiDescription =
+      typeof output.description === "string" ? output.description : "";
 
     return {
       tags: mergeUniqueTags([...params.existingTags, ...aiTags]),
@@ -321,6 +315,7 @@ export async function generateAutoMetadata(params: {
         sanitizeDescription(params.existingDescription),
     };
   } catch {
+    console.error("AI request failed or timed out.");
     return {
       tags: params.existingTags,
       description: sanitizeDescription(params.existingDescription),

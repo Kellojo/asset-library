@@ -89,8 +89,11 @@ The app sends upload metadata to your AI endpoint using the **OpenAI-compatible 
 
 - `POST /v1/chat/completions`
 
-For best results choose an AI model that supports image inputs so it can analyze file previews.
+For best results choose an AI model that supports image and audio inputs, so that it can analyze the content of your assets and generate relevant tags and descriptions. Additionally, thinking models with good reasoning capabilities can provide more accurate and detailed metadata.
+
 Models that have been tried:
+
+- qwen/qwen3.5-9b
 - mistralai/devstral-small-2-2512
 
 ### ⚙️ Configure via `.env`
@@ -104,6 +107,8 @@ You can configure **AI metadata** via `.env` instead of the UI.
 - `AI_MODEL` (loaded model name)
 - `AI_API_KEY` (optional 🔑)
 - `AI_TIMEOUT_MS` (e.g. `12000`)
+- `AI_TEMPERATURE` (e.g. `0.2`, range `0` to `2`)
+- `AI_REASONING_EFFORT` (`none` | `minimal` | `low` | `medium` | `high` | `xhigh`)
 - `AI_CUSTOM_INSTRUCTION` (optional prompt addition ✏️)
 
 # Contributing

@@ -41,6 +41,15 @@
     { value: "size-desc", label: "Largest Size" },
     { value: "needs-metadata", label: "Needs Metadata First" },
   ] as const;
+  const AI_REASONING_EFFORT_OPTIONS = [
+    { value: "", label: "Auto (unset)" },
+    { value: "none", label: "None" },
+    { value: "minimal", label: "Minimal" },
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+    { value: "xhigh", label: "XHigh" },
+  ] as const;
   type SortMode = (typeof SORT_MODE_OPTIONS)[number]["value"];
   const DEFAULT_SORT_MODE: SortMode = "best-match";
   const THEME_STORAGE_KEY = "asset-library-theme";
@@ -128,7 +137,9 @@
     baseUrl: "http://127.0.0.1:1234",
     model: "",
     apiKey: "",
-    timeoutMs: 12000,
+    timeoutMs: 120000,
+    temperature: 0.2,
+    reasoningEffort: "",
     customInstruction: "",
   };
   const api = new AssetLibraryApiService();
@@ -1253,6 +1264,26 @@
           min="1000"
           step="500"
           bind:value={aiConfig.timeoutMs}
+        />
+      </label>
+
+      <label class="assetlib-modal-label">
+        <span>Temperature</span>
+        <Input
+          type="number"
+          min="0"
+          max="2"
+          step="0.1"
+          bind:value={aiConfig.temperature}
+        />
+      </label>
+
+      <label class="assetlib-modal-label">
+        <span>Reasoning Effort</span>
+        <SelectField
+          bind:value={aiConfig.reasoningEffort}
+          options={AI_REASONING_EFFORT_OPTIONS}
+          minWidth="100%"
         />
       </label>
 

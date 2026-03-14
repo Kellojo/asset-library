@@ -15,6 +15,12 @@ export const PATCH: RequestHandler = async ({ request }) => {
     model: typeof body.model === "string" ? body.model : undefined,
     apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
     timeoutMs: typeof body.timeoutMs === "number" ? body.timeoutMs : undefined,
+    temperature:
+      typeof body.temperature === "number" ? body.temperature : undefined,
+    reasoningEffort:
+      typeof body.reasoningEffort === "string"
+        ? body.reasoningEffort
+        : undefined,
     customInstruction:
       typeof body.customInstruction === "string"
         ? body.customInstruction
