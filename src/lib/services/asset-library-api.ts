@@ -7,6 +7,7 @@ export type AiConfig = {
   apiKey: string;
   timeoutMs: number;
   temperature: number;
+  disableThinking: boolean;
   reasoningEffort:
     | ""
     | "none"

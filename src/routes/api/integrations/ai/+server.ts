@@ -17,6 +17,10 @@ export const PATCH: RequestHandler = async ({ request }) => {
     timeoutMs: typeof body.timeoutMs === "number" ? body.timeoutMs : undefined,
     temperature:
       typeof body.temperature === "number" ? body.temperature : undefined,
+    disableThinking:
+      typeof body.disableThinking === "boolean"
+        ? body.disableThinking
+        : undefined,
     reasoningEffort:
       typeof body.reasoningEffort === "string"
         ? body.reasoningEffort

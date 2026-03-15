@@ -139,6 +139,7 @@
     apiKey: "",
     timeoutMs: 120000,
     temperature: 0.2,
+    disableThinking: false,
     reasoningEffort: "",
     customInstruction: "",
   };
@@ -1283,8 +1284,14 @@
         <SelectField
           bind:value={aiConfig.reasoningEffort}
           options={AI_REASONING_EFFORT_OPTIONS}
+          disabled={aiConfig.disableThinking}
           minWidth="100%"
         />
+      </label>
+
+      <label class="assetlib-toggle">
+        <input type="checkbox" bind:checked={aiConfig.disableThinking} />
+        <span>Disable model thinking (force reasoning effort = none)</span>
       </label>
 
       <label class="assetlib-modal-label">

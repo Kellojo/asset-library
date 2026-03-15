@@ -12,6 +12,7 @@ export interface AiConfig {
   apiKey: string;
   timeoutMs: number;
   temperature: number;
+  disableThinking: boolean;
   reasoningEffort:
     | ""
     | "none"
@@ -33,6 +34,7 @@ const defaultConfig: AiConfig = {
   apiKey: "",
   timeoutMs: 120_000,
   temperature: 0.2,
+  disableThinking: false,
   reasoningEffort: "",
   customInstruction: "",
 };
@@ -97,6 +99,8 @@ function applyEnvOverrides(config: AiConfig): AiConfig {
     temperature:
       parseEnvTemperature(env.AI_TEMPERATURE) ??
       clampTemperature(config.temperature),
+    disableThinking:
+      parseEnvBoolean(env.AI_DISABLE_THINKING) ?? config.disableThinking,
     reasoningEffort:
       sanitizeReasoningEffort(env.AI_REASONING_EFFORT) ||
       config.reasoningEffort,
@@ -131,6 +135,7 @@ export async function getAiConfig(): Promise<AiConfig> {
         ? parsed.temperature
         : defaultConfig.temperature,
     ),
+    disableThinking: parsed.disableThinking ?? defaultConfig.disableThinking,
     reasoningEffort: sanitizeReasoningEffort(parsed.reasoningEffort),
     customInstruction: sanitizeInstruction(
       parsed.customInstruction ?? defaultConfig.customInstruction,
@@ -151,6 +156,7 @@ export async function updateAiConfig(
     model: (updates.model ?? current.model).trim(),
     timeoutMs: Math.max(1_000, updates.timeoutMs ?? current.timeoutMs),
     temperature: clampTemperature(updates.temperature ?? current.temperature),
+    disableThinking: updates.disableThinking ?? current.disableThinking,
     reasoningEffort: sanitizeReasoningEffort(
       updates.reasoningEffort ?? current.reasoningEffort,
     ),
@@ -271,22 +277,28 @@ export async function generateAutoMetadata(params: {
   const elapsedMs = (): number => Date.now() - requestStartedAt;
 
   try {
-    const reasoningRequested = config.reasoningEffort || "(unset)";
+    const reasoningRequested = config.disableThinking
+      ? "none (forced by disableThinking)"
+      : config.reasoningEffort || "(unset)";
     console.info("[ai] metadata request start", {
       model: config.model,
       timeoutMs: config.timeoutMs,
       temperature: config.temperature,
+      disableThinking: config.disableThinking,
       reasoningEffortRequested: reasoningRequested,
       category: params.category,
       fileName: params.originalName,
     });
 
     const runGeneration = async (withReasoningEffort: boolean) => {
+      const effectiveReasoningEffort = config.disableThinking
+        ? "none"
+        : config.reasoningEffort;
       const providerOptions =
-        withReasoningEffort && config.reasoningEffort
+        withReasoningEffort && effectiveReasoningEffort
           ? {
               openai: {
-                reasoningEffort: config.reasoningEffort,
+                reasoningEffort: effectiveReasoningEffort,
                 // Unknown model IDs (e.g. qwen/... via LM Studio) may be
                 // treated as non-reasoning by default and have reasoning
                 // options stripped unless we force reasoning mode.
@@ -296,12 +308,13 @@ export async function generateAutoMetadata(params: {
           : undefined;
 
       const reasoningApplied =
-        withReasoningEffort && !!config.reasoningEffort
-          ? config.reasoningEffort
+        withReasoningEffort && !!effectiveReasoningEffort
+          ? effectiveReasoningEffort
           : "(none)";
       console.info("[ai] metadata generation attempt", {
         model: config.model,
         temperature: config.temperature,
+        disableThinking: config.disableThinking,
         reasoningEffortApplied: reasoningApplied,
       });
 
@@ -322,13 +335,14 @@ export async function generateAutoMetadata(params: {
     try {
       ({ output } = await runGeneration(true));
     } catch (error) {
-      if (!config.reasoningEffort) {
+      if (!config.reasoningEffort || config.disableThinking) {
         throw error;
       }
       console.warn(
         "AI request with reasoningEffort failed, retrying without reasoningEffort.",
         {
           model: config.model,
+          disableThinking: config.disableThinking,
           reasoningEffortRequested: config.reasoningEffort,
         },
       );
@@ -360,6 +374,7 @@ export async function generateAutoMetadata(params: {
   } catch (error) {
     console.error("AI request failed or timed out.", {
       model: config.model,
+      disableThinking: config.disableThinking,
       reasoningEffortRequested: config.reasoningEffort || "(unset)",
       error: error instanceof Error ? error.message : String(error),
       elapsedMs: elapsedMs(),

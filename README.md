@@ -108,6 +108,7 @@ You can configure **AI metadata** via `.env` instead of the UI.
 - `AI_API_KEY` (optional 🔑)
 - `AI_TIMEOUT_MS` (e.g. `12000`)
 - `AI_TEMPERATURE` (e.g. `0.2`, range `0` to `2`)
+- `AI_DISABLE_THINKING` (`true` / `false`, forces `reasoningEffort=none`)
 - `AI_REASONING_EFFORT` (`none` | `minimal` | `low` | `medium` | `high` | `xhigh`)
 - `AI_CUSTOM_INSTRUCTION` (optional prompt addition ✏️)
 
