@@ -1,5 +1,7 @@
 # 📦 Asset Library
 
+![Preview](./docs/images/main-overview.png)
+
 A simple **self-hosted asset library** for your 🎮 game development needs, available as a simple selfhostable docker container:
 
 - ⬆️ Uploading assets:
@@ -76,6 +78,8 @@ This keeps setup **very small and easy to back up**.
 If a legacy `data/assets.json` exists, it is automatically migrated into SQLite on first startup.
 
 # ✨ AI Metadata Generation
+
+![Preview](./docs/images/ai-setup.png)
 
 You can connect **AI metadata generation** from the UI:
 
