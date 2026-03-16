@@ -2,7 +2,7 @@
 
 ![Preview](./docs/images/main-overview.png)
 
-A simple **self-hosted asset library** for your 🎮 game development needs, available as a simple selfhostable docker container:
+A simple **self-hosted asset library** for your game development needs, available as a simple selfhostable docker container:
 
 - ⬆️ Uploading assets:
   - 🔊 audio
@@ -30,7 +30,7 @@ A simple **self-hosted asset library** for your 🎮 game development needs, ava
 
 🚧 Currently not available
 
-- 🔐 User accounts / permissions
+- User accounts / permissions
 
 # 🚀 Quick Start
 
@@ -70,8 +70,9 @@ In case you obsere failing requests when uploading large files, make sure that y
 
 At runtime the app creates a `data/` directory in the project root:
 
-- 📄 `data/assets.db`: SQLite metadata database
-- 📂 `data/uploads/`: uploaded files
+- `data/assets.db`: SQLite metadata database
+- `data/ai-config.json`: AI metadata generation configuration (optional)
+- `data/uploads/`: uploaded files
 
 This keeps setup **very small and easy to back up**.
 
@@ -100,9 +101,25 @@ Models that have been tried:
 - qwen/qwen3.5-9b
 - mistralai/devstral-small-2-2512
 
-### ⚙️ Configure via `.env`
+### ⚙️ Configure via `.env` or `ai-config.json`
 
-You can configure **AI metadata** via `.env` instead of the UI.
+You can configure **AI metadata** via `.env` or `ai-config.json` instead of the UI.
+
+Place this config in `data/ai-config.json`:
+
+```json
+{
+  "enabled": true,
+  "baseUrl": "http://192.168.178.21:1234",
+  "model": "qwen/qwen3.5-9b",
+  "apiKey": "",
+  "timeoutMs": 120000,
+  "temperature": 0.2,
+  "disableThinking": false,
+  "reasoningEffort": "low",
+  "customInstruction": ""
+}
+```
 
 ### Supported variables
 
@@ -131,6 +148,8 @@ Roadmap:
 - Better responsiveness for mobile devices
 
 ## 🛠️ Development
+
+To run the app locally for development, first clone the repo and install dependencies:
 
 ```bash
 npm install
