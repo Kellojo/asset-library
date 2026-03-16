@@ -1,4 +1,4 @@
-# 📦 Asset Library (SvelteKit)
+# 📦 Asset Library
 
 A simple **self-hosted asset library** for your 🎮 game development needs, available as a simple selfhostable docker container:
 
